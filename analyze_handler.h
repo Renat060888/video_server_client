@@ -15,15 +15,14 @@ namespace video_server_client{
 class AnalyzeHandler : public QObject
 {
 Q_OBJECT
-    friend class VideoServerHandler;
+    friend class PrivateImplementationVSH;
 public:
-
     AnalyzeHandler( common_types::SCommandServices & _commandServices );
     ~AnalyzeHandler();
 
     bool init( CommandAnalyzeStart::SInitialParams _params );
-    const std::string & getLastError(){ return m_lastError; }
-    const CommandAnalyzeStart::SInitialParams & getInitialParams(){ return m_initialParams; }
+    const std::string & getLastError();
+    const CommandAnalyzeStart::SInitialParams & getInitialParams();
 
     bool start();
     bool stop( bool _destroy = false );
@@ -41,24 +40,14 @@ private:
     void sendSignalEventOccured();
     void sendSignalStateChanged( const EAnalyzeState _state );
 
-    void addEvent( PAnalyticEvent & event );
+    class PrivateImplementationAnalyzeHandler * m_impl;
 
+    // access allowed only for private entities
+private:
+    void setProcessingId( const TProcessingId & _id );
     void addStatus( const SAnalyzeStatus & _status, bool _afterDestroy );
-    void statusChangedFromAsync( const SAnalyzeStatus & _status );
     void updateOnlyChangedValues( const SAnalyzeStatus & _statusIn, SAnalyzeStatus & _statusOut );
-
-    // data
-    std::vector<PConstAnalyticEvent> m_incomingEvents;
-    std::string m_lastError;
-    CommandAnalyzeStart::SInitialParams m_initialParams;
-    SAnalyzeStatus m_status;
-    EAnalyzeState m_stateToSignal;
-
-    // service
-    std::mutex m_mutexEventsLock;
-    common_types::SCommandServices & m_commandServices;
-
-    class AnalyzeHandlerPrivate * m_impl;
+    void addEvent( PAnalyticEvent & event );
 };
 using PAnalyzeHandler = std::shared_ptr<AnalyzeHandler>;
 

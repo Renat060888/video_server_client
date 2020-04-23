@@ -69,7 +69,7 @@ public:
         objrepr::SpatialObjectManager * objManager = objrepr::RepresentationServer::instance()->objectManager();
         objrepr::GlobalDataManager * globalManager = objrepr::RepresentationServer::instance()->globalManager();
 
-        std::vector<PrivateImplementation::SVideoServerConnection> out;
+        std::vector<PrivateImplementationVSC::SVideoServerConnection> out;
 
         // find or create new root container
         vector<objrepr::SpatialObjectPtr> videoServersContainerInstances;
@@ -184,6 +184,7 @@ public:
     }
 
     std::vector<PVideoServerHandler> connectToVideoServers( const std::vector<SVideoServerConnection> & _connections ){
+
         std::vector<PVideoServerHandler> out;
         for( const SVideoServerConnection & conn : _connections ){
             // network for connection w/server            
@@ -245,6 +246,7 @@ public:
     }
 
     PNetworkClient createTransport( const SAmqpSettings & _settings ){
+
         PAmqpClient client = std::make_shared<AmqpClient>( INetworkEntity::INVALID_CONN_ID );
 
         AmqpClient::SInitSettings clientSettings;
@@ -264,6 +266,7 @@ public:
     }
 
     void slotContextLoaded(){
+
         const vector<PrivateImplementationVSC::SVideoServerConnection> connections = findVideoServers();
         const std::vector<PVideoServerHandler> handlers = connectToVideoServers( connections );
 
@@ -273,12 +276,14 @@ public:
     }
 
     void slotContextUnloaded(){
+
         muVideoServerHandlers.lock();
         videoServerHandlers.clear();
         muVideoServerHandlers.unlock();
     }
 
     void threadMaintenance(){
+
         while( ! shutdownCalled ){
             muVideoServerHandlers.lock();
             for( PVideoServerHandler & handler : videoServerHandlers ){
@@ -315,6 +320,7 @@ VideoServerClient::VideoServerClient()
 }
 
 VideoServerClient::~VideoServerClient(){
+
     m_impl->shutdownCalled = true;
     common_utils::threadShutdown( m_impl->threadClientMaintenance );
 
@@ -323,6 +329,7 @@ VideoServerClient::~VideoServerClient(){
 }
 
 VideoServerClient * VideoServerClient::getInstance(){
+
     if( g_instance ){
         g_instanceRefCounter++;
         return g_instance;
@@ -338,6 +345,7 @@ VideoServerClient * VideoServerClient::getInstance(){
 }
 
 void VideoServerClient::destroyInstance( VideoServerClient * & _instance ){
+
     if( ! _instance ){
         return;
     }
@@ -356,6 +364,7 @@ void VideoServerClient::destroyInstance( VideoServerClient * & _instance ){
 }
 
 bool VideoServerClient::init( const SInitSettings & _settings ){
+
     // check stage
     if( m_impl->inited ){
         VS_LOG_WARN << PRINT_HEADER << " already inited" << endl;
@@ -379,13 +388,13 @@ bool VideoServerClient::init( const SInitSettings & _settings ){
     objrepr::RepresentationServer::instance()->contextUnloaded.connect( boost::bind( & PrivateImplementationVSC::slotContextUnloaded, m_impl) );
 
     // network settings
-    m_impl->amqpSettings.amqpBrokerHost = "";
-    m_impl->amqpSettings.amqpBrokerPort = 0;
-    m_impl->amqpSettings.amqpBrokerVirtualHost = "";
-    m_impl->amqpSettings.amqpLogin = "";
-    m_impl->amqpSettings.amqpPass = "";
+    m_impl->amqpSettings.amqpBrokerHost = "lenin";
+    m_impl->amqpSettings.amqpBrokerPort = 5672;
+    m_impl->amqpSettings.amqpBrokerVirtualHost = "safecity";
+    m_impl->amqpSettings.amqpLogin = "scuser";
+    m_impl->amqpSettings.amqpPass = "scpass";
 
-    // async process of tasks
+    // async process of commands
     m_impl->threadClientMaintenance = new std::thread( & PrivateImplementationVSC::threadMaintenance, m_impl );
 
     VS_LOG_INFO << PRINT_HEADER
@@ -397,6 +406,7 @@ bool VideoServerClient::init( const SInitSettings & _settings ){
 }
 
 std::vector<PVideoServerHandler> VideoServerClient::getVideoServerHandlers(){
+
     if( ! m_impl->inited ){
         VS_LOG_WARN << PRINT_HEADER << " not yet inited" << endl;
         return std::vector<PVideoServerHandler>();
@@ -410,14 +420,17 @@ std::vector<PVideoServerHandler> VideoServerClient::getVideoServerHandlers(){
 }
 
 const std::string & VideoServerClient::getLastError(){
+
     return m_impl->lastError;
 }
 
 void VideoServerClient::sendSignalClientMessage( string _msg ){
+
     emit signalClientMessage( _msg.c_str() );
 }
 
 void VideoServerClient::sendSignalNewServerDetected( TObjectId _serverId ){
+
     emit signalNewServerDetected( _serverId );
 }
 

@@ -24,7 +24,7 @@ public:
     bool start();
     bool stop( bool _destroy = false );
 
-    SArchiveStatus getArchiveStatus();
+    const SArchiveStatus & getArchiveStatus();
 
 
 signals:
@@ -38,6 +38,7 @@ private:
 
     // access allowed only for private entities
 private:
+    void setArchivingId( const TArchivingId & _id );
     void addStatus( const SArchiveStatus & _status, bool _afterDestroy );
     void updateOnlyChangedValues( const SArchiveStatus & _statusIn, SArchiveStatus & _statusOut );
 };

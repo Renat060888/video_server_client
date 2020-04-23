@@ -24,7 +24,7 @@ const TProcessingId CommandAnalyzeStatus::ALL_PROCESSING = "all_processings";
 CommandAnalyzeStatus::CommandAnalyzeStatus( SCommandServices * _commandServices )
     : ICommand(_commandServices)
     , m_localHostname( QHostInfo::localHostName().toStdString() )
-    , m_localIpAddress( common_utils::getIpAddressStr() )
+    , m_localIpAddress( ::common_utils::getIpAddressStr() )
 {
 
 }
@@ -65,8 +65,10 @@ bool CommandAnalyzeStatus::parseResponseTemplateMethodPart(){
             m_status.processingName = record["processing_name"].asString();
             m_status.profileId = record["profile_id"].asUInt64();
 
-            m_commandServices->handler->addAnalyzeStatus( m_status );
+            std::vector<SAnalyzeStatus> status = { m_status };
+            m_commandServices->callbacks->updateAnalyzeStatus( status );
         }
+        return true;
     }
     else{
         m_lastError = body.asString();

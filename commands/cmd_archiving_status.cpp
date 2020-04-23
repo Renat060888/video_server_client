@@ -55,7 +55,8 @@ bool CommandArchivingStatus::parseResponseTemplateMethodPart(){
         m_status.archivingName = record["archiving_name"].asString();
         m_status.archiveState = common_utils::convertArchivingStateStr( record["state"].asString() );
 
-        m_commandServices->handler->addArchivingStatus( m_status );
+        std::vector<SArchiveStatus> status = { m_status };
+        m_commandServices->callbacks->updateArchivingStatus( status );
     }
 }
 

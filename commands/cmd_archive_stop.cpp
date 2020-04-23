@@ -53,7 +53,8 @@ bool CommandArchiveStop::parseResponseTemplateMethodPart(){
         status.archivingId = body["archiving_id"].asString();
         status.archiveState = common_utils::convertArchivingStateStr( body["archiving_state"].asString() );
 
-        m_commandServices->handler->addArchivingStatus( status, true );
+        std::vector<SArchiveStatus> statuses = { status };
+        m_commandServices->callbacks->updateArchivingStatus( statuses );
         return true;
     }
     else{

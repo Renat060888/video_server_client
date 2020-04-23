@@ -13,9 +13,9 @@ QMAKE_CXXFLAGS += -Wno-unused-variable
 
 # TODO: add defines to logger, system monitor, restbed webserver, database, etc...
 DEFINES += \
-#    SWITCH_LOGGER_SIMPLE \
-    SWITCH_LOGGER_ASTRA \
-    OBJREPR_LIBRARY_EXIST \
+    SWITCH_LOGGER_SIMPLE \
+#    SWITCH_LOGGER_ASTRA \
+#    OBJREPR_LIBRARY_EXIST \
 
 # NOTE: paths for dev environment ( all projects sources in one dir )
 INCLUDEPATH +=  \

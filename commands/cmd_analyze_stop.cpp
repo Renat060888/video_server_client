@@ -54,7 +54,8 @@ bool CommandAnalyzeStop::parseResponseTemplateMethodPart(){
         status.processingId = body["processing_id"].asString();
         status.processingName = body["processing_name"].asString();
 
-        m_commandServices->handler->addAnalyzeStatus( status, true ); // TODO: destroy=true - WTF?
+        std::vector<SAnalyzeStatus> statuses = { status };
+        m_commandServices->callbacks->updateAnalyzeStatus( statuses );
         return true;
     }
     else{

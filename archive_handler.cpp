@@ -24,7 +24,11 @@ class PrivateImplementationArchiveHandler {
 public:
     PrivateImplementationArchiveHandler( SCommandServices & _commandServices )
         : m_commandServices(_commandServices)
+        , interface(nullptr)
     {}
+
+
+
 
     // data
     CommandArchiveStart::SInitialParams m_initialParams;
@@ -35,8 +39,6 @@ public:
     // service
     ArchiveHandler * interface;
     common_types::SCommandServices & m_commandServices;
-
-
 };
 
 
@@ -57,18 +59,20 @@ ArchiveHandler::~ArchiveHandler(){
 
 bool ArchiveHandler::init( CommandArchiveStart::SInitialParams _params ){
 
+    // check stage
     if( 0 == _params.sensorId ){
         m_impl->m_lastError = "sensor id is ZERO";
         return false;
     }
-
     if( _params.archivingName.empty() ){
         m_impl->m_lastError = "archiving name is EMPTY";
         return false;
     }
 
+    // for 'start' command
     m_impl->m_initialParams = _params;
 
+    //
     m_impl->m_status.sensorId = _params.sensorId;
     m_impl->m_status.archivingId = _params.archivingId;
     m_impl->m_status.archivingName = _params.archivingName;
@@ -142,10 +146,16 @@ void ArchiveHandler::sendSignalStateChanged( const EArchiveState _state ){
     emit signalStateChanged(_state);
 }
 
+void ArchiveHandler::setArchivingId( const TArchivingId & _id ){
+
+    m_impl->m_status.archivingId = _id;
+}
+
 void ArchiveHandler::addStatus( const SArchiveStatus & _status, bool _afterDestroy ){
 
     updateOnlyChangedValues( _status, m_impl->m_status );
 
+    // TODO: comment this snippet - what's going on here ?
     // signal about state change only on non-destroy event
     if( ! _afterDestroy ){
         auto lambda = [ this ]( const SArchiveStatus & _status ) {
@@ -157,7 +167,7 @@ void ArchiveHandler::addStatus( const SArchiveStatus & _status, bool _afterDestr
 
         // create future for deferred signal
         std::future<void> deferredSignalFuture = std::async( std::launch::async, lambda, _status );
-        m_impl->m_commandServices.handler->addDeferredSignalFuture( std::move(deferredSignalFuture) );
+//        m_impl->m_commandServices.handler->addDeferredSignalFuture( std::move(deferredSignalFuture) );
     }
 }
 
@@ -177,7 +187,7 @@ void ArchiveHandler::updateOnlyChangedValues( const SArchiveStatus & _statusIn, 
     }
 }
 
-SArchiveStatus ArchiveHandler::getArchiveStatus(){
+const SArchiveStatus & ArchiveHandler::getArchiveStatus(){
 
     return m_impl->m_status;
 }

@@ -16,11 +16,25 @@ using namespace common_types;
 // ------------------------------------------------------------------------------
 // private
 // ------------------------------------------------------------------------------
-class AnalyzeHandlerPrivate {
+class PrivateImplementationAnalyzeHandler {
 public:
+    PrivateImplementationAnalyzeHandler( SCommandServices & _commandServices )
+        : m_commandServices(_commandServices)
+        , interface(nullptr)
+    {}
 
 
+    // data
+    std::vector<PConstAnalyticEvent> m_incomingEvents;
+    std::string m_lastError;
+    CommandAnalyzeStart::SInitialParams m_initialParams;
+    SAnalyzeStatus m_status;
+    EAnalyzeState m_stateToSignal;
 
+    // service
+    AnalyzeHandler * interface;
+    std::mutex m_mutexEventsLock;
+    common_types::SCommandServices & m_commandServices;
 
 };
 
@@ -29,67 +43,75 @@ public:
 // public
 // ------------------------------------------------------------------------------
 AnalyzeHandler::AnalyzeHandler( SCommandServices & _commandServices )
-    : m_commandServices(_commandServices)
+    : m_impl(new PrivateImplementationAnalyzeHandler(_commandServices))
 {
-
+    m_impl->interface = this;
 }
 
-AnalyzeHandler::~AnalyzeHandler()
-{
+AnalyzeHandler::~AnalyzeHandler(){
 
+    delete m_impl;
+    m_impl = nullptr;
 }
 
 bool AnalyzeHandler::init( CommandAnalyzeStart::SInitialParams _params ){
 
     if( 0 == _params.sensorId ){
-        m_lastError = "sensor id is ZERO";
+        m_impl->m_lastError = "sensor id is ZERO";
         return false;
     }
-
     if( 0 == _params.profileId ){
-        m_lastError = "profile id is ZERO";
+        m_impl->m_lastError = "profile id is ZERO";
         return false;
     }
 
-    m_initialParams = _params;
+    m_impl->m_initialParams = _params;
 
     cout << PRINT_HEADER
-         << " created new analyze handler with sensor id [" << m_initialParams.sensorId << "]"
+         << " created new analyze handler with sensor id [" << m_impl->m_initialParams.sensorId << "]"
          << endl;
 
-    m_status.sensorId = _params.sensorId;
-    m_status.processingId = _params.processingId;
-    m_status.processingName = _params.processingName;
-    m_status.profileId = _params.profileId;
-    m_status.analyzeState = _params.analyzeState;
+    m_impl->m_status.sensorId = _params.sensorId;
+    m_impl->m_status.processingId = _params.processingId;
+    m_impl->m_status.processingName = _params.processingName;
+    m_impl->m_status.profileId = _params.profileId;
+    m_impl->m_status.analyzeState = _params.analyzeState;
 
     return true;
+}
+
+const std::string & AnalyzeHandler::getLastError(){
+    return m_impl->m_lastError;
+}
+
+const CommandAnalyzeStart::SInitialParams & AnalyzeHandler::getInitialParams(){
+    return m_impl->m_initialParams;
 }
 
 bool AnalyzeHandler::start(){
 
     // NOTE: выход из паузы определяется по текущему состоянию анализатора
-    if( EAnalyzeState::READY == m_status.analyzeState ){
+    if( EAnalyzeState::READY == m_impl->m_status.analyzeState ){
 
         // TODO: move to VideoServerHandler as 'destroy' in STOP
         CommandAnalyzeStart::SInitialParams params;
         params.resume = true;
-        params.sensorId = m_status.sensorId;
-        params.profileId = m_status.profileId;
-        params.processingId = m_status.processingId;
-        params.processingName = m_status.processingName;
+        params.sensorId = m_impl->m_status.sensorId;
+        params.profileId = m_impl->m_status.profileId;
+        params.processingId = m_impl->m_status.processingId;
+        params.processingName = m_impl->m_status.processingName;
 
-        PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_commandServices );
+        PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_impl->m_commandServices );
         cmd->m_params = params;
         return cmd->exec();
     }
     else{
-        PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_commandServices );
-        cmd->m_params = m_initialParams;
+        PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_impl->m_commandServices );
+        cmd->m_params = m_impl->m_initialParams;
         const bool rt = cmd->exec();
 
-        m_status.processingId = cmd->m_processingId;
-        m_status.analyzeState = cmd->m_analyzeState;
+        m_impl->m_status.processingId = cmd->m_processingId;
+        m_impl->m_status.analyzeState = cmd->m_analyzeState;
         return rt;
     }
 }
@@ -97,11 +119,11 @@ bool AnalyzeHandler::start(){
 bool AnalyzeHandler::stop( bool _destroy ){
 
     CommandAnalyzeStop::SInitialParams params;
-    params.sensorId = m_status.sensorId;
-    params.processingId = m_status.processingId;
+    params.sensorId = m_impl->m_status.sensorId;
+    params.processingId = m_impl->m_status.processingId;
     params.destroy = _destroy;
 
-    PCommandAnalyzeStop cmd = std::make_shared<CommandAnalyzeStop>( & m_commandServices );
+    PCommandAnalyzeStop cmd = std::make_shared<CommandAnalyzeStop>( & m_impl->m_commandServices );
     cmd->m_params = params;
     return cmd->exec();
 }
@@ -121,7 +143,7 @@ SAnalyzeStatus AnalyzeHandler::getAnalyzeStatus(){
 
 //    cmd->exec();
 
-    return m_status;
+    return m_impl->m_status;
 }
 
 SAnalyzeLaunchParams AnalyzeHandler::getAnalyzeLaunchParams(){
@@ -130,8 +152,8 @@ SAnalyzeLaunchParams AnalyzeHandler::getAnalyzeLaunchParams(){
 
     // TODO: temp
 //    SAnalyzeStatus status = getAnalyzeStatus();
-    out.processingId = m_status.processingId;
-    out.sensorId = m_status.sensorId;
+    out.processingId = m_impl->m_status.processingId;
+    out.sensorId = m_impl->m_status.sensorId;
 
     return out;
 }
@@ -140,17 +162,23 @@ std::vector<PConstAnalyticEvent> AnalyzeHandler::getEvents(){
 
     std::vector<PConstAnalyticEvent> out;
 
-    m_mutexEventsLock.lock();
-    out.swap( m_incomingEvents );
-    m_mutexEventsLock.unlock();
+    m_impl->m_mutexEventsLock.lock();
+    out.swap( m_impl->m_incomingEvents );
+    m_impl->m_mutexEventsLock.unlock();
 
     return out;
 }
 
+void AnalyzeHandler::setProcessingId( const TProcessingId & _id ){
+
+//    m_impl->m_status.archivingId = _id;
+}
+
 void AnalyzeHandler::addStatus( const SAnalyzeStatus & _status, bool _afterDestroy ){
 
-    updateOnlyChangedValues( _status, m_status );
+    updateOnlyChangedValues( _status, m_impl->m_status );
 
+    // TODO: comment this snippet - what's going on here ?
     // signal about state change only on non-destroy event
     if( ! _afterDestroy ){
         auto lambda = [ this ]( const SAnalyzeStatus & _status ) {
@@ -162,14 +190,8 @@ void AnalyzeHandler::addStatus( const SAnalyzeStatus & _status, bool _afterDestr
 
         // create future for deferred signal
         std::future<void> deferredSignalFuture = std::async( std::launch::async, lambda, _status );
-        m_commandServices.handler->addDeferredSignalFuture( std::move(deferredSignalFuture) );
+//        m_impl->m_commandServices.handler->addDeferredSignalFuture( std::move(deferredSignalFuture) );
     }
-}
-
-void AnalyzeHandler::statusChangedFromAsync( const SAnalyzeStatus & _status ){
-
-    updateOnlyChangedValues( _status, m_status );
-    sendSignalStateChanged( _status.analyzeState );
 }
 
 void AnalyzeHandler::updateOnlyChangedValues( const SAnalyzeStatus & _statusIn, SAnalyzeStatus & _statusOut ){
@@ -193,9 +215,9 @@ void AnalyzeHandler::updateOnlyChangedValues( const SAnalyzeStatus & _statusIn, 
 
 void AnalyzeHandler::addEvent( PAnalyticEvent & event ){
 
-    m_mutexEventsLock.lock();
-    m_incomingEvents.push_back( event );
-    m_mutexEventsLock.unlock();
+    m_impl->m_mutexEventsLock.lock();
+    m_impl->m_incomingEvents.push_back( event );
+    m_impl->m_mutexEventsLock.unlock();
 
     sendSignalEventOccured();
 }
@@ -208,13 +230,13 @@ void AnalyzeHandler::sendSignalEventOccured(){
 void AnalyzeHandler::sendSignalStateChanged( const EAnalyzeState _state ){
 
     // avoid duplicate
-    if( m_stateToSignal == _state ){
+    if( m_impl->m_stateToSignal == _state ){
         return;
     }
-    m_stateToSignal = _state;
+    m_impl->m_stateToSignal = _state;
 
     // state hierarchy
-    if( EAnalyzeState::ACTIVE == m_stateToSignal && EAnalyzeState::PREPARING == _state ){
+    if( EAnalyzeState::ACTIVE == m_impl->m_stateToSignal && EAnalyzeState::PREPARING == _state ){
         cout << PRINT_HEADER
              << " catched state [PREPARING] after state [ACTIVE]. Signal aborted"
              << endl;
@@ -222,7 +244,7 @@ void AnalyzeHandler::sendSignalStateChanged( const EAnalyzeState _state ){
     }
 
     cout << PRINT_HEADER
-         << " anayzer with sensor id [" << m_initialParams.sensorId << "]"
+         << " anayzer with sensor id [" << m_impl->m_initialParams.sensorId << "]"
          << " changed state to [" << common_utils::convertAnalyzeStateToStr(_state) << "]"
          << endl;    
 

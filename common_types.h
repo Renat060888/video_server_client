@@ -138,6 +138,8 @@ struct SArchiveStatus {
     void clear(){
         sensorId = 0;
         archiveState = EArchiveState::UNDEFINED;
+        archivingId.clear();
+        archivingName.clear();
     }
 
     EArchiveState archiveState;
@@ -158,6 +160,8 @@ struct SAnalyzeStatus {
         sensorId = 0;
         analyzeState = EAnalyzeState::UNDEFINED;
         profileId = 0;
+        processingId.clear();
+        processingName.clear();
     }
 
     EAnalyzeState analyzeState;

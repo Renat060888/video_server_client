@@ -15,6 +15,7 @@ public:
     struct SInitialParams {
         SInitialParams()
             : sensorId(0)
+            , archiveState(EArchiveState::UNDEFINED)
         {}
         uint64_t sensorId;
         // TODO: who set this name ?

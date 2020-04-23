@@ -44,10 +44,6 @@ public:
                                    bool * _errOccured = nullptr,
                                    std::string * _errMsg  = nullptr );
 
-    // retranslation
-    bool sourceConnect( CommandConnectSource::SInitialParams _params );
-    bool sourceDisconnect( CommandConnectSource::SInitialParams _params );
-
     // archive
     void destroyArchiving( PArchiveHandler _handler );
     std::unordered_multimap<TSensorId, PArchiveHandler> & getArchiveHandlers();
@@ -55,6 +51,10 @@ public:
     PArchiveHandler launchArchiving( CommandArchiveStart::SInitialParams _params,
                                      bool * _errOccured = nullptr,
                                      std::string * _errMsg  = nullptr );
+
+    // retranslation
+    bool sourceConnect( CommandConnectSource::SInitialParams _params );
+    bool sourceDisconnect( CommandConnectSource::SInitialParams _params );
 
 
 signals:
@@ -72,7 +72,7 @@ private:
 
     // access allowed only for private entities
 private:
-    bool init( SInitSettings _settings );
+    bool init( const SInitSettings & _settings );
     SVideoServerStatus & getStatusRef();
     void runSystemClock();
 };

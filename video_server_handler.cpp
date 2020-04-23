@@ -33,6 +33,34 @@ public:
         lastPongMillisec = common_utils::getCurrentTimeMillisec();
     }
 
+    virtual void archiverIsReady( const TArchivingId & _archId, const TLaunchCorrelationId & _corrId ) override {
+
+        auto iter = archiversAtLaunchPhase.find( _corrId );
+        if( iter != archiversAtLaunchPhase.end() ){
+            PArchiveHandler archiverHandler = iter->second;
+            archiverHandler->setArchivingId( _archId );
+
+            archiversAtLaunchPhase.erase( iter );
+        }
+        else{
+            // TODO: do
+        }
+    }
+
+    virtual void analyzerIsReady( const TProcessingId & _procId, const TLaunchCorrelationId & _corrId ) override {
+
+        auto iter = analyzersAtLaunchPhase.find( _corrId );
+        if( iter != analyzersAtLaunchPhase.end() ){
+            PAnalyzeHandler analyzerHandler = iter->second;
+            analyzerHandler->setProcessingId( _procId );
+
+            analyzersAtLaunchPhase.erase( iter );
+        }
+        else{
+            // TODO: do
+        }
+    }
+
     virtual void updateServerState( const SServerState & _state ) override {
         // TODO: assign by one variable
         status->objreprId = _state.objreprId;
@@ -76,9 +104,9 @@ public:
         }
     }
 
-    virtual void newEvent( const std::vector<SAnalyticEvent> & _event ) override {
+    virtual void newEvent( std::vector<SAnalyticEvent> & _event ) override {
 
-        for( const SAnalyticEvent & event : _event ){
+        for( SAnalyticEvent & event : _event ){
             analyzeHandlersLock.lock();
             auto iter = analyzeHandlersByProcessingId.find( event.m_processingId );
             if( iter != analyzeHandlersByProcessingId.end() ){
@@ -192,6 +220,14 @@ public:
         return true;
     }
 
+    string getContextName( const uint32_t _ctxId ){
+        for( const objrepr::ContextPtr ctx : objrepr::RepresentationServer::instance()->contextList() ){
+            if( ctx->id() == _ctxId ){
+                return ctx->name();
+            }
+        }
+    }
+
     // data
     PCommandPlayerPing commandPing;
     PVideoServerStatus status;
@@ -204,6 +240,8 @@ public:
     std::unordered_map<TProcessingId, PAnalyzeHandler> analyzeHandlersByProcessingId;
     std::unordered_multimap<TSensorId, PArchiveHandler> archivingHandlersBySensorId;
     std::unordered_map<TArchivingId, PArchiveHandler> archivingHandlersByArchivingId;
+    std::map<TLaunchCorrelationId, PArchiveHandler> archiversAtLaunchPhase;
+    std::map<TLaunchCorrelationId, PAnalyzeHandler> analyzersAtLaunchPhase;
 
     // service
     VideoServerHandler * interface;
@@ -236,7 +274,7 @@ void VideoServerHandler::runSystemClock(){
     m_impl->runSystemClock();
 }
 
-bool VideoServerHandler::init( SInitSettings _settings ){
+bool VideoServerHandler::init( const SInitSettings & _settings ){
 
     m_impl->settings = _settings;
 
@@ -343,7 +381,7 @@ void VideoServerHandler::destroyArchiving( PArchiveHandler _handler ){
         PArchiveHandler archiveHandler = iter->second;
 
         m_impl->archiveHandlersLock.unlock();
-        archiveHandler->stop();
+        archiveHandler->stop( true );
         m_impl->archiveHandlersLock.lock();
 
         m_impl->archivingHandlersBySensorId.erase( iter->first );
@@ -384,6 +422,10 @@ PArchiveHandler VideoServerHandler::launchArchiving( CommandArchiveStart::SIniti
         }
         return nullptr;
     }
+
+    // launch correlation
+    const TLaunchCorrelationId corrId = common_utils::generateUniqueId();
+    m_impl->archiversAtLaunchPhase.insert( {corrId, archiveHandler} );
 
     // start
     archiveHandler->start();
