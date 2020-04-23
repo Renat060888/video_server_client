@@ -8,35 +8,24 @@
 
 #include <QObject>
 
-#include "from_ms_common/communication/network_interface.h"
 #include "analyze_handler.h"
 #include "archive_handler.h"
 #include "commands/cmd_source_connect.h"
 
 namespace video_server_client{
 
-class VideoServerHandler : public QObject, public INetworkObserver
+class VideoServerHandler : public QObject
 {
 Q_OBJECT
-    friend class PrivateImplementation;
-    friend class AnalyzeHandler;
-    friend class ArchiveHandler;
-    friend class CommandExternalEvent;
-    friend class CommandExternalState;
-    friend class CommandAnalyzeStart;
-    friend class CommandAnalyzeStop;
-    friend class CommandAnalyzeStatus;
-    friend class CommandArchiveStart;
-    friend class CommandArchiveStop;
-    friend class CommandArchivingStatus;
-    friend class CommandPing;
+    friend class PrivateImplementationVSC;
+    friend class PrivateImplementationVSH;
 public:
     struct SInitSettings {
         SInitSettings()
-            : videoServerPongTimeoutSec(0)
+            : objreprId(0)
+            , role(EServerRole::UNDEFINED)
         {}
         PNetworkClient networkClient;
-        int64_t videoServerPongTimeoutSec;
         TObjectId objreprId;
         EServerRole role;
     };
@@ -74,29 +63,18 @@ signals:
     void signalMessage( QString _msg );
 
 
-private:
-    virtual void callbackNetworkRequest( PEnvironmentRequest _request ) override;
-
+private:   
     void sendSignalStatusUpdated();
     void sendSignalOnline( bool _online );
     void sendSignalMessage( std::string _msg );
 
+    class PrivateImplementationVSH * m_impl;
 
+    // access allowed only for private entities
+private:
     bool init( SInitSettings _settings );
     SVideoServerStatus & getStatusRef();
-
-    void setOwnIdByItSelf( const std::string _archivingId, uint64_t _corrId );
-    void runPing();
-
     void runSystemClock();
-    void checkConnectionState();
-    void updateAnalyzeHandlers();
-    void updateArchivingHandlers();
-    void addDeferredSignalFuture( std::future<void> && _future );
-
-    std::string getContextName( uint32_t _ctxId );
-
-    struct VideoServerHandlerPrivate * m_impl;
 };
 using PVideoServerHandler = std::shared_ptr<VideoServerHandler>;
 

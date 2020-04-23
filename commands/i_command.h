@@ -13,7 +13,7 @@ namespace video_server_client {
 class ICommand
 {
 public:
-    ICommand( common_types::SCommandServices * _commandServices, PNetworkClient _network );
+    ICommand( common_types::SCommandServices * _commandServices );
     virtual ~ICommand();
 
     const std::string & getLastError(){ return m_lastError; }
@@ -37,6 +37,7 @@ protected:
     common_types::SCommandServices * m_commandServices;
     Json::FastWriter m_jsonWriter;
     Json::Reader m_jsonReader;
+
 
 private:
     bool performBlockedNetworking();

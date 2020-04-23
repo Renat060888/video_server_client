@@ -30,6 +30,7 @@ struct SAnalyticEvent {
     void clear(){
         m_sensorId = 0;
         m_totalCount = 0;
+        m_processingId.clear();
     }
 
     uint64_t m_sensorId;
@@ -49,13 +50,6 @@ enum class EServerRole {
     RETRANSLATION,
     ARCHIVING,
     ANALYZE,
-    UNDEFINED
-};
-
-enum class EConnectionType {
-    HTTP,
-    WEBSOCKET,
-    OBJREPR_SERVICE_CHANNEL, // TODO: do
     UNDEFINED
 };
 
@@ -79,23 +73,22 @@ enum class EAnalyzeState {
     UNDEFINED
 };
 
-enum class EPlayerStatus {
-    INITED,
-    CONTEXT_LOADED,
-    PLAYING,
-    ALL_STEPS_PASSED,
-    NOT_ENOUGH_STEPS,
-    PAUSED,
-    STOPPED,
-    PLAY_FROM_POSITION,
-    CRASHED,
-    CLOSE,
-    UNDEFINED
-};
-
 // -------------------------------
 // internal structures
 // -------------------------------
+struct SSystemState {
+    float cpuUsagePercent;
+    int32_t systemMemoryUsagePercent;
+    int32_t gpuUsagePercent;
+    int32_t gpuMemoryUsagePercent;
+};
+
+struct SServerState {
+    TObjectId objreprId;
+    EServerRole role;
+    uint32_t currentContextId;
+};
+
 struct SVideoServerStatus {
     SVideoServerStatus(){
         clear();
@@ -182,24 +175,6 @@ struct SSensorRecord {
     {}
     TObjectId sensorId;
     std::vector<TTimeRange> recordSessionsMillisec;
-};
-
-struct SPlayerState {
-    SPlayerState()
-    {
-        clear();
-    }
-
-    void clear(){
-        currentPlayPositionMillisec = 0;
-        playerStatus = EPlayerStatus::UNDEFINED;
-
-    }    
-
-    EPlayerStatus playerStatus;
-    int64_t currentPlayPositionMillisec;
-    std::vector<SSensorRecord> recordedSensors;
-    TTimeRange globalTimeRange;
 };
 
 struct SAnalyzeLaunchParams {

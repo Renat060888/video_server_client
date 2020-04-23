@@ -3,13 +3,15 @@
 
 #include "video_server_handler.h"
 #include "commands/cmd_analyze_stop.h"
-#include "analyze_handler.h"
+#include "from_ms_common/common/ms_common_utils.h"
 #include "common_vars.h"
 #include "common_utils.h"
+#include "analyze_handler.h"
 
 namespace video_server_client{
 
 using namespace std;
+using namespace common_types;
 
 // ------------------------------------------------------------------------------
 // private
@@ -51,7 +53,7 @@ bool AnalyzeHandler::init( CommandAnalyzeStart::SInitialParams _params ){
 
     m_initialParams = _params;
 
-    cout << common_vars::PRINT_HEADER
+    cout << PRINT_HEADER
          << " created new analyze handler with sensor id [" << m_initialParams.sensorId << "]"
          << endl;
 
@@ -78,21 +80,14 @@ bool AnalyzeHandler::start(){
         params.processingName = m_status.processingName;
 
         PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_commandServices );
-        if( ! cmd->init( params ) ){
-            m_lastError = cmd->getLastError();
-            return false;
-        }
-
+        cmd->m_params = params;
         return cmd->exec();
     }
     else{
         PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_commandServices );
-        if( ! cmd->init( m_initialParams ) ){
-            m_lastError = cmd->getLastError();
-            return false;
-        }
-
+        cmd->m_params = m_initialParams;
         const bool rt = cmd->exec();
+
         m_status.processingId = cmd->m_processingId;
         m_status.analyzeState = cmd->m_analyzeState;
         return rt;
@@ -101,19 +96,13 @@ bool AnalyzeHandler::start(){
 
 bool AnalyzeHandler::stop( bool _destroy ){
 
-    PCommandAnalyzeStop cmd = std::make_shared<CommandAnalyzeStop>( & m_commandServices );
     CommandAnalyzeStop::SInitialParams params;
     params.sensorId = m_status.sensorId;
     params.processingId = m_status.processingId;
     params.destroy = _destroy;
-    if( ! cmd->init( params ) ){
-        m_lastError = cmd->getLastError();
-        return false;
-    }
 
-    // TODO: test
-//    m_commandServices.handler->getAnalyzeHandlers().erase( m_initialParams.sensorId );
-
+    PCommandAnalyzeStop cmd = std::make_shared<CommandAnalyzeStop>( & m_commandServices );
+    cmd->m_params = params;
     return cmd->exec();
 }
 
@@ -226,13 +215,13 @@ void AnalyzeHandler::sendSignalStateChanged( const EAnalyzeState _state ){
 
     // state hierarchy
     if( EAnalyzeState::ACTIVE == m_stateToSignal && EAnalyzeState::PREPARING == _state ){
-        cout << common_vars::PRINT_HEADER
+        cout << PRINT_HEADER
              << " catched state [PREPARING] after state [ACTIVE]. Signal aborted"
              << endl;
         return;
     }
 
-    cout << common_vars::PRINT_HEADER
+    cout << PRINT_HEADER
          << " anayzer with sensor id [" << m_initialParams.sensorId << "]"
          << " changed state to [" << common_utils::convertAnalyzeStateToStr(_state) << "]"
          << endl;    

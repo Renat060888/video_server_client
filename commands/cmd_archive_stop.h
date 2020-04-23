@@ -21,12 +21,8 @@ public:
 
     CommandArchiveStop( common_types::SCommandServices * _commandServices );
 
-    bool init( SInitialParams _params );
-
-
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
+    // request
+    SInitialParams m_params;
 
 
 private:

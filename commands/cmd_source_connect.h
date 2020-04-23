@@ -21,19 +21,13 @@ public:
     CommandConnectSource( common_types::SCommandServices * _commandServices );
     ~CommandConnectSource();
 
-    bool init( SInitialParams _params );
-
-
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
+    // request
+    SInitialParams m_params;
 
 
 private:
     virtual bool serializeRequestTemplateMethodPart() override;
     virtual bool parseResponseTemplateMethodPart() override;
-
-    SInitialParams m_params;
 };
 using PCommandConnectSource = std::shared_ptr<CommandConnectSource>;
 

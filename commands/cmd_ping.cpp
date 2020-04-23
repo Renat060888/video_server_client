@@ -8,8 +8,8 @@ namespace video_server_client {
 
 using namespace std;
 
-CommandPlayerPing::CommandPlayerPing( common_types::SCommandServices * _commandServices, PNetworkClient _network )
-    : ICommand(_commandServices, _network)
+CommandPlayerPing::CommandPlayerPing( common_types::SCommandServices * _commandServices )
+    : ICommand(_commandServices)
 {
 
 }
@@ -17,7 +17,6 @@ CommandPlayerPing::CommandPlayerPing( common_types::SCommandServices * _commandS
 bool CommandPlayerPing::serializeRequestTemplateMethodPart(){
 
     Json::Value rootRecord;
-    rootRecord[ "user_id" ] = m_userIdToPlayer;
     rootRecord[ "cmd_type" ] = "service";
     rootRecord[ "cmd_name" ] = "ping";
 
@@ -36,17 +35,12 @@ bool CommandPlayerPing::parseResponseTemplateMethodPart(){
         return false;
     }
 
-    m_commandServices->clientController->pongByPlayerCatched();
+    m_commandServices->callbacks->pongCatched();
 
     const string code = parsedRecord["code"].asString();
-    if( code != common_vars::PLAYER_CODE_NOT_REGISTERED ){
-        const void * playerState;
-        // parse from message
-        m_commandServices->clientController->updatePlayer( playerState );
-    }
-    else{
-        m_commandServices->clientController->registerInPlayer();
-    }
+
+
+
 
     return true;
 }

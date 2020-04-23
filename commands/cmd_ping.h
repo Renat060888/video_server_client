@@ -9,9 +9,7 @@ namespace video_server_client {
 class CommandPlayerPing : public ICommand
 {
 public:
-    CommandPlayerPing( common_types::SCommandServices * _commandServices, PNetworkClient _network );
-
-    common_types::TPlayerClientUniqueId m_userIdToPlayer;
+    CommandPlayerPing( common_types::SCommandServices * _commandServices );
 
 
 private:

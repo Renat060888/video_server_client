@@ -18,7 +18,7 @@ Q_OBJECT
     friend class VideoServerHandler;
 public:
 
-    AnalyzeHandler( SCommandServices & _commandServices );
+    AnalyzeHandler( common_types::SCommandServices & _commandServices );
     ~AnalyzeHandler();
 
     bool init( CommandAnalyzeStart::SInitialParams _params );
@@ -56,7 +56,7 @@ private:
 
     // service
     std::mutex m_mutexEventsLock;
-    SCommandServices & m_commandServices;
+    common_types::SCommandServices & m_commandServices;
 
     class AnalyzeHandlerPrivate * m_impl;
 };

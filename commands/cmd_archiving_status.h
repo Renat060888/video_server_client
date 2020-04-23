@@ -21,20 +21,16 @@ public:
 
     CommandArchivingStatus( common_types::SCommandServices * _commandServices );
 
-    bool init( SInitialParams _params );
+    // request
+    SInitialParams m_params;
 
+    // response
     SArchiveStatus m_status;
-
-
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
 
 
 private:
     virtual bool serializeRequestTemplateMethodPart() override;
     virtual bool parseResponseTemplateMethodPart() override;
-
 };
 using PCommandArchivingStatus = std::shared_ptr<CommandArchivingStatus>;
 

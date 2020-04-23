@@ -1,4 +1,6 @@
 
+#include <objrepr/reprServer.h>
+
 #include "from_ms_common/communication/amqp_client_c.h"
 #include "from_ms_common/communication/amqp_controller.h"
 #include "from_ms_common/system/logger.h"
@@ -6,19 +8,17 @@
 #include "common_vars.h"
 #include "video_server_client.h"
 
-using namespace std;
-
 namespace video_server_client{
+
+using namespace std;
 
 static VideoServerClient * g_instance = nullptr;
 static int32_t g_instanceRefCounter = 0;
 
-static constexpr int64_t SERVER_TIMEOUT_MILLISEC = 60000;
-
 // --------------------------------------------------------------------
 // private
 // --------------------------------------------------------------------
-class PrivateImplementation {
+class PrivateImplementationVSC {
 public:
     struct SVideoServerConnection {
         SVideoServerConnection()
@@ -45,7 +45,7 @@ public:
         std::string amqpPass;
     };
 
-    PrivateImplementation()
+    PrivateImplementationVSC()
         : interface(nullptr)
         , threadClientMaintenance(nullptr)
         , shutdownCalled(false)
@@ -54,12 +54,12 @@ public:
 
     }
 
-    ~PrivateImplementation(){
+    ~PrivateImplementationVSC(){
 
 
     }
 
-    std::vector<PrivateImplementation::SVideoServerConnection> findVideoServers(){
+    std::vector<PrivateImplementationVSC::SVideoServerConnection> findVideoServers(){
         const std::string VIDEO_SERVER_INSTANCE_AN_CLASSINFO_NAME = "Сервер обработки видео";
         const std::string VIDEO_SERVER_INSTANCE_AR_CLASSINFO_NAME = "Сервер хранения видео";
         const std::string VIDEO_SERVER_INSTANCE_ATTR_ID = "Идентификатор";
@@ -159,7 +159,7 @@ public:
 
                 const std::string address = addressAttr->valueAsString();
 
-                PrivateImplementation::SVideoServerConnection connection;
+                PrivateImplementationVSC::SVideoServerConnection connection;
                 connection.videoServerHost = address.substr( 0, address.find_first_of(":") );
                 connection.videoServerPort = stoi( address.substr( address.find_first_of(":") + 1, address.size() - address.find_first_of(":") ) );
                 connection.objreprId = videoServer->id();
@@ -186,14 +186,8 @@ public:
     std::vector<PVideoServerHandler> connectToVideoServers( const std::vector<SVideoServerConnection> & _connections ){
         std::vector<PVideoServerHandler> out;
         for( const SVideoServerConnection & conn : _connections ){
-            // network for connection w/server
-            SAmqpSettings settings;
-            settings.amqpBrokerHost = "";
-            settings.amqpBrokerPort = 0;
-            settings.amqpBrokerVirtualHost = "";
-            settings.amqpLogin = "";
-            settings.amqpPass = "";
-            PNetworkClient networkTransport = createTransport( settings );
+            // network for connection w/server            
+            PNetworkClient networkTransport = createTransport( amqpSettings );
             PNetworkClient networkConnection = listenServer( networkTransport, conn.videoServerHost, conn.videoServerPort, conn.objreprId );
             if( ! networkConnection ){
                 VS_LOG_WARN << PRINT_HEADER << " couldn't create video-server-handler for"
@@ -206,7 +200,6 @@ public:
             // interaction w/server
             VideoServerHandler::SInitSettings handlerSettings;
             handlerSettings.networkClient = networkConnection;
-            handlerSettings.videoServerPongTimeoutSec = SERVER_TIMEOUT_MILLISEC;
             handlerSettings.objreprId = conn.objreprId;
             handlerSettings.role = conn.role;
             PVideoServerHandler videoServerHandler = std::make_shared<VideoServerHandler>();
@@ -221,16 +214,21 @@ public:
     }
 
     PNetworkClient listenServer( const PNetworkClient & _networkClient, const std::string & _host, int _port, TObjectId _serverId ){
-        const string linkId = std::to_string( _serverId );
+        const string serverId = std::to_string( _serverId );
+        const string clientId = "ip" + common_utils::getIpAddressStr()
+                + "_"
+                + "pid" + std::to_string( ::getpid() )
+                + "_"
+                + "vsid" + serverId;
 
         // client -> server
         SAmqpRouteParameters routes;
         routes.predatorExchangePointName = "video_dx_clients";
-        routes.predatorQueueName = "video_q_client_mailbox_" + linkId;
-        routes.predatorRoutingKeyName = "video_rk_to_client_" + linkId;
+        routes.predatorQueueName = "video_q_client_mailbox_" + clientId;
+        routes.predatorRoutingKeyName = "video_rk_to_client_" + clientId;
         routes.targetExchangePointName = "video_dx_servers";
-        routes.targetQueueName = "video_q_server_mailbox_" + linkId;
-        routes.targetRoutingKeyName = "video_rk_to_server_" + linkId;
+        routes.targetQueueName = "video_q_server_mailbox_" + serverId;
+        routes.targetRoutingKeyName = "video_rk_to_server_" + serverId;
 
         AmqpController::SInitSettings settings2;
         settings2.client = _networkClient;
@@ -239,7 +237,7 @@ public:
         PAmqpController controller = std::make_shared<AmqpController>( INetworkEntity::INVALID_CONN_ID );
         const bool rt = controller->init( settings2 );
         if( ! rt ){
-            state->lastError = controller->getState().lastError;
+            lastError = controller->getState().lastError;
             return nullptr;
         }
 
@@ -266,7 +264,7 @@ public:
     }
 
     void slotContextLoaded(){
-        const vector<PrivateImplementation::SVideoServerConnection> connections = findVideoServers();
+        const vector<PrivateImplementationVSC::SVideoServerConnection> connections = findVideoServers();
         const std::vector<PVideoServerHandler> handlers = connectToVideoServers( connections );
 
         muVideoServerHandlers.lock();
@@ -295,6 +293,8 @@ public:
     // data
     bool inited;
     bool shutdownCalled;
+    VideoServerClient::SInitSettings settings;
+    SAmqpSettings amqpSettings;
     std::vector<PVideoServerHandler> videoServerHandlers;
     std::string lastError;
 
@@ -309,7 +309,7 @@ public:
 // public
 // --------------------------------------------------------------------
 VideoServerClient::VideoServerClient()
-    : m_impl(new PrivateImplementation())
+    : m_impl(new PrivateImplementationVSC())
 {
      m_impl->interface = this;
 }
@@ -337,7 +337,7 @@ VideoServerClient * VideoServerClient::getInstance(){
     }
 }
 
-bool VideoServerClient::destroyInstance( VideoServerClient * & _instance ){
+void VideoServerClient::destroyInstance( VideoServerClient * & _instance ){
     if( ! _instance ){
         return;
     }
@@ -375,11 +375,18 @@ bool VideoServerClient::init( const SInitSettings & _settings ){
         m_impl->slotContextLoaded();
     }
 
-    objrepr::RepresentationServer::instance()->contextLoadingFinished.connect( boost::bind( & PrivateImplementation::slotContextLoaded, m_impl) );
-    objrepr::RepresentationServer::instance()->contextUnloaded.connect( boost::bind( & PrivateImplementation::slotContextUnloaded, m_impl) );
+    objrepr::RepresentationServer::instance()->contextLoadingFinished.connect( boost::bind( & PrivateImplementationVSC::slotContextLoaded, m_impl) );
+    objrepr::RepresentationServer::instance()->contextUnloaded.connect( boost::bind( & PrivateImplementationVSC::slotContextUnloaded, m_impl) );
+
+    // network settings
+    m_impl->amqpSettings.amqpBrokerHost = "";
+    m_impl->amqpSettings.amqpBrokerPort = 0;
+    m_impl->amqpSettings.amqpBrokerVirtualHost = "";
+    m_impl->amqpSettings.amqpLogin = "";
+    m_impl->amqpSettings.amqpPass = "";
 
     // async process of tasks
-    m_impl->threadClientMaintenance = new std::thread( & PrivateImplementation::threadMaintenance, m_impl );
+    m_impl->threadClientMaintenance = new std::thread( & PrivateImplementationVSC::threadMaintenance, m_impl );
 
     VS_LOG_INFO << PRINT_HEADER
                 << " init success"

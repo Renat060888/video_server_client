@@ -13,12 +13,20 @@ QMAKE_CXXFLAGS += -Wno-unused-variable
 
 # TODO: add defines to logger, system monitor, restbed webserver, database, etc...
 DEFINES += \
-    SWITCH_LOGGER_SIMPLE \
-#    SWITCH_LOGGER_ASTRA \
+#    SWITCH_LOGGER_SIMPLE \
+    SWITCH_LOGGER_ASTRA \
+    OBJREPR_LIBRARY_EXIST \
 
 # NOTE: paths for dev environment ( all projects sources in one dir )
 INCLUDEPATH +=  \
     $${PWD}/from_ms_common/ \
+
+contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
+    message("connect 'unilog' and 'objrepr' libraries")
+LIBS += \
+    -lunilog \
+    -lobjrepr
+}
 
 SOURCES += \
         analyze_handler.cpp \
@@ -41,7 +49,8 @@ SOURCES += \
         from_ms_common/system/logger_simple.cpp \
         main.cpp \
         video_server_client.cpp \
-        video_server_handler.cpp
+        video_server_handler.cpp \
+    from_ms_common/system/object_pool.cpp
 
 HEADERS += \
     analyze_handler.h \
@@ -70,4 +79,6 @@ HEADERS += \
     from_ms_common/system/logger_normal.h \
     from_ms_common/system/logger_simple.h \
     video_server_client.h \
-    video_server_handler.h
+    video_server_handler.h \
+    common_utils.h \
+    from_ms_common/system/object_pool.h

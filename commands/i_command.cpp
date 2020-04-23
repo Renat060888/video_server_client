@@ -6,10 +6,10 @@ namespace video_server_client {
 
 using namespace std;
 
-ICommand::ICommand( common_types::SCommandServices * _commandServices, PNetworkClient _network )
+ICommand::ICommand( common_types::SCommandServices * _commandServices )
     : m_commandServices(_commandServices)
 {
-    m_networkRequest = _network->getRequestInstance();
+    m_networkRequest = m_commandServices->networkClient->getRequestInstance();
 }
 
 ICommand::~ICommand(){

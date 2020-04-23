@@ -4,15 +4,18 @@
 #include <jsoncpp/json/writer.h>
 #include <jsoncpp/json/reader.h>
 
+#include "from_ms_common/system/logger.h"
+#include "from_ms_common/common/ms_common_utils.h"
 #include "cmd_source_connect.h"
 #include "common_vars.h"
 
-using namespace std;
-
 namespace video_server_client{
 
+using namespace std;
+using namespace common_types;
+
 CommandConnectSource::CommandConnectSource( SCommandServices * _commandServices ) :
-    ACommand(_commandServices)
+    ICommand(_commandServices)
 {
 
 }
@@ -23,58 +26,32 @@ CommandConnectSource::~CommandConnectSource()
 }
 
 bool CommandConnectSource::serializeRequestTemplateMethodPart(){
-
-}
-
-bool CommandConnectSource::parseResponseTemplateMethodPart(){
-
-}
-
-string CommandConnectSource::execDerive(){
-
-    if( request->sendOutcomingMessage( m_outcomingMessage ) ){
-        return request->m_incomingMessage;
-    }
-    else{
-        return string();
-    }
-}
-
-bool CommandConnectSource::init( SInitialParams _params ){
-
-    if( _params.sourceUrl.empty() ){
+    if( m_params.sourceUrl.empty() ){
         return false;
     }
 
     Json::Value root;
     root[ "cmd_type" ] = "source";
     root[ "cmd_name" ] = "connect";
-    root[ "url" ] = _params.sourceUrl;
-    root[ "sensor_id" ] = (long long)_params.sensorId;
+    root[ "url" ] = m_params.sourceUrl;
+    root[ "sensor_id" ] = (long long)m_params.sensorId;
 
     Json::FastWriter writer;
-    m_outcomingMessage = writer.write( root );
+    m_outcomingMsg = writer.write( root );
 
-    m_params = _params;
     return true;
 }
 
-bool CommandConnectSource::parseResponse( const std::string & _msgBody ){
-
-    Json::Reader reader;
+bool CommandConnectSource::parseResponseTemplateMethodPart(){
     Json::Value parsedRecord;
-    if( ! reader.parse( _msgBody.c_str(), parsedRecord, false ) ){
-
-        cerr << common_vars::PRINT_HEADER
-             << "Command: parse failed of [1] Reason: [2] "
-             << _msgBody << " " << reader.getFormattedErrorMessages()
-             << endl;
-
-        m_lastError = reader.getFormattedErrorMessages();
+    if( ! m_jsonReader.parse( m_incomingMsg.c_str(), parsedRecord, false ) ){
+        VS_LOG_ERROR << "parse failed due to [" << m_jsonReader.getFormattedErrorMessages() << "]"
+                     << " msg [" << m_incomingMsg << "]"
+                     << endl;
         return false;
     }
 
-    return true;
+    // TODO: do
 }
 
 }

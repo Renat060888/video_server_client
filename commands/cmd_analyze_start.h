@@ -45,22 +45,17 @@ public:
     CommandAnalyzeStart( common_types::SCommandServices * _commandServices );
     ~CommandAnalyzeStart();
 
-    bool init( SInitialParams _params );
+    // request
+    SInitialParams m_params;
 
     // NOTE: response from server
     std::string m_processingId;
     EAnalyzeState m_analyzeState;
 
 
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
-
-
 private:
     virtual bool serializeRequestTemplateMethodPart() override;
     virtual bool parseResponseTemplateMethodPart() override;
-
 };
 using PCommandAnalyzeStart = std::shared_ptr<CommandAnalyzeStart>;
 

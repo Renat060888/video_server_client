@@ -15,12 +15,10 @@ public:
     struct SInitialParams {
         SInitialParams()
             : sensorId(0)
-            , asyncOperations(false)
         {}
         uint64_t sensorId;
+        // TODO: who set this name ?
         std::string archivingName;
-        uint64_t correlationId;
-        bool asyncOperations;
 
         // creating from status
         std::string archivingId;
@@ -29,22 +27,17 @@ public:
 
     CommandArchiveStart( common_types::SCommandServices * _commandServices );
 
-    bool init( SInitialParams _params );
+    // request
+    SInitialParams m_params;
 
     // NOTE: response from server
     std::string m_archivingId;
     EArchiveState m_archiveState;
 
 
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
-
-
 private:
     virtual bool serializeRequestTemplateMethodPart() override;
     virtual bool parseResponseTemplateMethodPart() override;
-
 };
 using PCommandArchiveStart = std::shared_ptr<CommandArchiveStart>;
 

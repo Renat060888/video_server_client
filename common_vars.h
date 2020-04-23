@@ -19,7 +19,7 @@ namespace common_vars {
         const std::string COMMAND_STATE_CHANGED = "state_changed";
 
         const std::string COMMAND_RESULT_SUCCESS = "success";
-        const std::string COMMAND_RESULT_FAIL = "success";
+        const std::string COMMAND_RESULT_FAIL = "fail";
     }
 }
 

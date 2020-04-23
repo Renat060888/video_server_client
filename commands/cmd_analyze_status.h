@@ -23,14 +23,11 @@ public:
         uint64_t sensorId;
     };   
 
-    bool init( SInitialParams _params );
+    // request
+    SInitialParams m_params;
 
+    // response
     SAnalyzeStatus m_status;
-
-
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
 
 
 private:

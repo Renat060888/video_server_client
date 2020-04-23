@@ -21,18 +21,13 @@ public:
     CommandDisconnectSource( common_types::SCommandServices * _commandServices );
     ~CommandDisconnectSource(){}
 
-    bool init( SInitialParams _params );
-
-
-protected:
-    virtual bool parseResponse( const std::string & _msgBody ) override;
-    virtual std::string execDerive() override;
+    // request
+    SInitialParams m_params;
 
 
 private:
     virtual bool serializeRequestTemplateMethodPart() override;
     virtual bool parseResponseTemplateMethodPart() override;
-
 };
 using PCommandDisconnectSource = std::shared_ptr<CommandDisconnectSource>;
 

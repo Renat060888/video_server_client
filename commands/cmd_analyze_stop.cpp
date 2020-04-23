@@ -4,46 +4,48 @@
 #include <jsoncpp/json/writer.h>
 #include <jsoncpp/json/reader.h>
 
+#include "from_ms_common/system/logger.h"
+#include "from_ms_common/common/ms_common_utils.h"
 #include "video_server_handler.h"
 #include "cmd_analyze_stop.h"
 #include "common_vars.h"
 #include "common_utils.h"
 
-using namespace std;
-
 namespace video_server_client{
 
+using namespace std;
+using namespace common_types;
+
 CommandAnalyzeStop::CommandAnalyzeStop( SCommandServices * _commandServices )
-    : ACommand(_commandServices)
+    : ICommand(_commandServices)
 {
 
 }
 
 bool CommandAnalyzeStop::serializeRequestTemplateMethodPart(){
+    Json::Value root;
+    root[ "cmd_type" ] = "analyze";
+    root[ "cmd_name" ] = "stop";
+    root[ "sensor_id" ] = (unsigned long long)m_params.sensorId;
+    root[ "processing_id" ] = m_params.processingId;
+    root[ "destroy_current_session" ] = m_params.destroy;
 
+    Json::FastWriter writer;
+    m_outcomingMsg = writer.write( root );
+
+    return true;
 }
 
 bool CommandAnalyzeStop::parseResponseTemplateMethodPart(){
-
-}
-
-bool CommandAnalyzeStop::parseResponse( const std::string & _msgBody ){
-
-    Json::Reader reader;
     Json::Value parsedRecord;
-    if( ! reader.parse( _msgBody.c_str(), parsedRecord, false ) ){
-
-        cerr << common_vars::PRINT_HEADER
-             << "Command: parse failed of [1] Reason: [2] "
-             << _msgBody << " " << reader.getFormattedErrorMessages()
-             << endl;
-
-        m_lastError = "";
+    if( ! m_jsonReader.parse( m_incomingMsg.c_str(), parsedRecord, false ) ){
+        VS_LOG_ERROR << "parse failed due to [" << m_jsonReader.getFormattedErrorMessages() << "]"
+                     << " msg [" << m_incomingMsg << "]"
+                     << endl;
         return false;
     }
 
     Json::Value body = parsedRecord["body"];
-
     if( common_vars::incoming_commands::COMMAND_RESULT_SUCCESS == parsedRecord["response"].asString() ){
 
         SAnalyzeStatus status;
@@ -59,36 +61,6 @@ bool CommandAnalyzeStop::parseResponse( const std::string & _msgBody ){
         m_lastError = body.asString();
         return false;
     }
-}
-
-std::string CommandAnalyzeStop::execDerive(){
-
-//    if( ! m_commandServices->videoServerStatus->contextOpened ){
-//        m_lastError = "context not opened";
-//        return string();
-//    }
-
-    if( request->sendOutcomingMessage( m_outcomingMessage ) ){
-        return request->m_incomingMessage;
-    }
-    else{
-        return string();
-    }
-}
-
-bool CommandAnalyzeStop::init( SInitialParams _params ){
-
-    Json::Value root;
-    root[ "cmd_type" ] = "analyze";
-    root[ "cmd_name" ] = "stop";
-    root[ "sensor_id" ] = (unsigned long long)_params.sensorId;
-    root[ "processing_id" ] = _params.processingId;
-    root[ "destroy_current_session" ] = _params.destroy;
-
-    Json::FastWriter writer;
-    m_outcomingMessage = writer.write( root );
-
-    return true;
 }
 
 }

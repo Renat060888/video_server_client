@@ -4,37 +4,31 @@
 #include <jsoncpp/json/writer.h>
 #include <jsoncpp/json/reader.h>
 
+#include "from_ms_common/system/logger.h"
+#include "from_ms_common/common/ms_common_utils.h"
+#include "common_utils.h"
 #include "video_server_handler.h"
 #include "common_vars.h"
-#include "common_utils.h"
 #include "cmd_archive_start.h"
 
 namespace video_server_client{
 
 using namespace std;
+using namespace common_types;
 
 CommandArchiveStart::CommandArchiveStart( SCommandServices * _commandServices )
-    : ACommand(_commandServices)
+    : ICommand(_commandServices)
 {
 
 }
 
 bool CommandArchiveStart::serializeRequestTemplateMethodPart(){
-
-}
-
-bool CommandArchiveStart::parseResponseTemplateMethodPart(){
-
-}
-
-bool CommandArchiveStart::init( SInitialParams _params ){
-
-    if( 0 == _params.sensorId ){
+    if( 0 == m_params.sensorId ){
         m_lastError = "sensor id is ZERO";
         return false;
     }
 
-    if( _params.archivingName.empty() ){
+    if( m_params.archivingName.empty() ){
         m_lastError = "archiving name is EMPTY";
         return false;
     }
@@ -42,28 +36,22 @@ bool CommandArchiveStart::init( SInitialParams _params ){
     Json::Value root;
     root[ "cmd_type" ] = "storage";
     root[ "cmd_name" ] = "start";
-    root[ "sensor_id" ] = (unsigned long long)_params.sensorId;
-    root[ "archiving_name" ] = _params.archivingName;
-    root[ "archiving_id" ] = _params.archivingId;
+    root[ "sensor_id" ] = (unsigned long long)m_params.sensorId;
+    root[ "archiving_name" ] = m_params.archivingName;
+    root[ "archiving_id" ] = m_params.archivingId;
 
     Json::FastWriter writer;
-    m_outcomingMessage = writer.write( root );
+    m_outcomingMsg = writer.write( root );
 
     return true;
 }
 
-bool CommandArchiveStart::parseResponse( const std::string & _msgBody ){
-
-    Json::Reader reader;
+bool CommandArchiveStart::parseResponseTemplateMethodPart(){
     Json::Value parsedRecord;
-    if( ! reader.parse( _msgBody.c_str(), parsedRecord, false ) ){
-
-        cerr << common_vars::PRINT_HEADER
-             << "Command: parse failed of [1] Reason: [2] "
-             << _msgBody << " " << reader.getFormattedErrorMessages()
-             << endl;
-
-        m_lastError = "";
+    if( ! m_jsonReader.parse( m_incomingMsg.c_str(), parsedRecord, false ) ){
+        VS_LOG_ERROR << "parse failed due to [" << m_jsonReader.getFormattedErrorMessages() << "]"
+                     << " msg [" << m_incomingMsg << "]"
+                     << endl;
         return false;
     }
 
@@ -84,16 +72,6 @@ bool CommandArchiveStart::parseResponse( const std::string & _msgBody ){
     else{
         m_lastError = body["error_msg"].asString();
         return false;
-    }
-}
-
-std::string CommandArchiveStart::execDerive(){
-
-    if( request->sendOutcomingMessage( m_outcomingMessage ) ){
-        return request->getIncomingMessage();
-    }
-    else{
-        return string();
     }
 }
 

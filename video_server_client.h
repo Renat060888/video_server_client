@@ -16,7 +16,7 @@ namespace video_server_client{
 
 class VideoServerClient : public QObject {
 Q_OBJECT
-    friend class PrivateImplementation;
+    friend class PrivateImplementationVSC;
 public:
     struct SInitSettings {
         SInitSettings()
@@ -27,7 +27,7 @@ public:
     };
 
     static VideoServerClient * getInstance();
-    static bool destroyInstance( VideoServerClient * & _inst );
+    static void destroyInstance( VideoServerClient * & _inst );
 
     bool init( const SInitSettings & _settings );
     const std::string & getLastError();
@@ -50,7 +50,7 @@ private:
     VideoServerClient( const VideoServerClient & inst ) = delete;
     const VideoServerClient & operator=( const VideoServerClient & inst ) = delete;
 
-    class PrivateImplementation * m_impl;
+    class PrivateImplementationVSC * m_impl;
 };
 
 }
