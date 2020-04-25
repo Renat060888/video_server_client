@@ -3,6 +3,7 @@ ROOT_DIR=../
 TEMPLATE = app
 #TEMPLATE = lib
 TARGET = video_server_client
+CONFIG += plugin
 
 include($${ROOT_DIR}pri/common.pri)
 
@@ -11,15 +12,21 @@ include($${ROOT_DIR}pri/common.pri)
 QMAKE_CXXFLAGS += -Wno-unused-parameter
 QMAKE_CXXFLAGS += -Wno-unused-variable
 
+QT += network
+
 # TODO: add defines to logger, system monitor, restbed webserver, database, etc...
 DEFINES += \
-    SWITCH_LOGGER_SIMPLE \
-#    SWITCH_LOGGER_ASTRA \
-#    OBJREPR_LIBRARY_EXIST \
+#    SWITCH_LOGGER_SIMPLE \
+    SWITCH_LOGGER_ASTRA \
+    OBJREPR_LIBRARY_EXIST \
 
 # NOTE: paths for dev environment ( all projects sources in one dir )
 INCLUDEPATH +=  \
     $${PWD}/from_ms_common/ \
+
+LIBS += \
+    -ljsoncpp \
+    -lrabbitmq \
 
 contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
     message("connect 'unilog' and 'objrepr' libraries")
@@ -82,3 +89,5 @@ HEADERS += \
     video_server_handler.h \
     common_utils.h \
     from_ms_common/system/object_pool.h
+
+include($${ROOT_DIR}pri/install.pri)

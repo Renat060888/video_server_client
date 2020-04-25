@@ -26,7 +26,7 @@ public:
 
     bool start();
     bool stop( bool _destroy = false );
-    SAnalyzeStatus getAnalyzeStatus();
+    const SAnalyzeStatus & getAnalyzeStatus();
     SAnalyzeLaunchParams getAnalyzeLaunchParams();
     std::vector<PConstAnalyticEvent> getEvents();
 
@@ -42,7 +42,7 @@ private:
 
     class PrivateImplementationAnalyzeHandler * m_impl;
 
-    // access allowed only for private entities
+    // access allowed only for friend entities
 private:
     void setProcessingId( const TProcessingId & _id );
     void addStatus( const SAnalyzeStatus & _status, bool _afterDestroy );

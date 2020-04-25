@@ -70,7 +70,7 @@ private:
 
     class PrivateImplementationVSH * m_impl;
 
-    // access allowed only for private entities
+    // access allowed only for friend entities
 private:
     bool init( const SInitSettings & _settings );
     SVideoServerStatus & getStatusRef();

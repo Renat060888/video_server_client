@@ -29,7 +29,7 @@ public:
     static VideoServerClient * getInstance();
     static void destroyInstance( VideoServerClient * & _inst );
 
-    bool init( const SInitSettings & _settings );
+    bool init( SInitSettings _settings );
     const std::string & getLastError();
 
     std::vector<PVideoServerHandler> getVideoServerHandlers();

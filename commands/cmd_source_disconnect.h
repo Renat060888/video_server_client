@@ -2,7 +2,7 @@
 #define CMD_DISCONNECT_SOURCE_H
 
 #include "i_command.h"
-#include "common_types_private.h"
+#include "../common_types_private.h"
 
 namespace video_server_client{
 

@@ -32,10 +32,9 @@ public:
     EAnalyzeState m_stateToSignal;
 
     // service
+    common_types::SCommandServices & m_commandServices;
     AnalyzeHandler * interface;
     std::mutex m_mutexEventsLock;
-    common_types::SCommandServices & m_commandServices;
-
 };
 
 
@@ -128,20 +127,7 @@ bool AnalyzeHandler::stop( bool _destroy ){
     return cmd->exec();
 }
 
-SAnalyzeStatus AnalyzeHandler::getAnalyzeStatus(){
-
-    // TODO: зачем делать запрос, если изменение и так приходит асинхронно ?
-//    m_status.clear();
-
-//    PCommandAnalyzeStatus cmd = std::make_shared<CommandAnalyzeStatus>( & m_commandServices );
-//    CommandAnalyzeStatus::SInitialParams params;
-//    params.sensorId = m_initialParams.sensorId;
-//    if( ! cmd->init( params ) ){
-//        m_lastError = cmd->getLastError();
-//        return m_status;
-//    }
-
-//    cmd->exec();
+const SAnalyzeStatus & AnalyzeHandler::getAnalyzeStatus(){
 
     return m_impl->m_status;
 }

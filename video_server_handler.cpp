@@ -10,7 +10,7 @@
 #include "video_server_handler.h"
 
 static constexpr int64_t PING_INTERVAL_MILLISEC = 1000;
-static constexpr int64_t SERVER_TIMEOUT_MILLISEC = 60000;
+static constexpr int64_t SERVER_TIMEOUT_MILLISEC = 30000;
 
 namespace video_server_client{
 
@@ -27,6 +27,7 @@ public:
         : interface(nullptr)
         , online(false)
         , lastPongMillisec(0)
+        , lastPingAtMillisec(0)
     {}
 
     virtual void pongCatched() override {
@@ -104,7 +105,7 @@ public:
         }
     }
 
-    virtual void newEvent( std::vector<SAnalyticEvent> & _event ) override {
+    virtual void newEvent( std::vector<SAnalyticEvent> && _event ) override {
 
         for( SAnalyticEvent & event : _event ){
             analyzeHandlersLock.lock();
@@ -176,7 +177,6 @@ public:
 
     inline void ping(){
 
-        static int64_t lastPingAtMillisec = 0;
         if( (common_utils::getCurrentTimeMillisec() - lastPingAtMillisec) > PING_INTERVAL_MILLISEC ){
             if( commandPing->isReady() ){
                 commandPing->execAsync();
@@ -232,6 +232,7 @@ public:
     PCommandPlayerPing commandPing;
     PVideoServerStatus status;
     int64_t lastPongMillisec;
+    int64_t lastPingAtMillisec;
     bool online;
     VideoServerHandler::SInitSettings settings;
     std::string lastError;
@@ -281,6 +282,11 @@ bool VideoServerHandler::init( const SInitSettings & _settings ){
     // command services
     m_impl->commandServices.networkClient = _settings.networkClient;
     m_impl->commandServices.callbacks = m_impl;
+
+    // status
+    m_impl->status = std::make_shared<SVideoServerStatus>();
+    m_impl->status->objreprId = _settings.objreprId;
+    m_impl->status->role = _settings.role;
 
     // network
     PNetworkProvider netProvider = std::dynamic_pointer_cast<INetworkProvider>( _settings.networkClient );

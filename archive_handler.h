@@ -13,6 +13,7 @@ class ArchiveHandler : public QObject
 {
 Q_OBJECT
     friend class PrivateImplementationVSH;
+    friend class CommandArchiveStart;
 public:
     ArchiveHandler( common_types::SCommandServices & _commandServices );
     ~ArchiveHandler();
@@ -36,7 +37,7 @@ private:
 
     class PrivateImplementationArchiveHandler * m_impl;
 
-    // access allowed only for private entities
+    // access allowed only for friend entities
 private:
     void setArchivingId( const TArchivingId & _id );
     void addStatus( const SArchiveStatus & _status, bool _afterDestroy );

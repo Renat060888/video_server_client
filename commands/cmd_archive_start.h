@@ -4,7 +4,7 @@
 #include <string>
 
 #include "i_command.h"
-#include "common_types_private.h"
+#include "../common_types_private.h"
 
 namespace video_server_client{
 
@@ -18,9 +18,7 @@ public:
             , archiveState(EArchiveState::UNDEFINED)
         {}
         uint64_t sensorId;
-        // TODO: who set this name ?
         std::string archivingName;
-
         // creating from status
         std::string archivingId;
         EArchiveState archiveState;
@@ -28,12 +26,8 @@ public:
 
     CommandArchiveStart( common_types::SCommandServices * _commandServices );
 
-    // request
-    SInitialParams m_params;
-
-    // NOTE: response from server
-    std::string m_archivingId;
-    EArchiveState m_archiveState;
+    SInitialParams m_params;    
+    class ArchiveHandler * m_commandInitiator;
 
 
 private:

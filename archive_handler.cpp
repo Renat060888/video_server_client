@@ -37,8 +37,8 @@ public:
     EArchiveState m_stateToSignal;
 
     // service
-    ArchiveHandler * interface;
     common_types::SCommandServices & m_commandServices;
+    ArchiveHandler * interface;
 };
 
 
@@ -98,15 +98,8 @@ bool ArchiveHandler::start(){
 
     PCommandArchiveStart cmd = std::make_shared<CommandArchiveStart>( & m_impl->m_commandServices );
     cmd->m_params = m_impl->m_initialParams;
+    cmd->m_commandInitiator = this;
     const bool rt = cmd->exec();
-
-    m_impl->m_status.archivingId = cmd->m_archivingId;
-    m_impl->m_status.archiveState = cmd->m_archiveState;
-
-    // NOTE: при первом запуске "archivingId" будет пустой, что значит создать стартовый архив.
-    // При повторных же с существующим ID будет создаваться архив с таким же ID,
-    // пока архиватор не будет уничтожен через "destroyArchiving" клиентским кодом
-    m_impl->m_initialParams.archivingId = m_impl->m_status.archivingId;
 
     return rt;
 }
@@ -181,6 +174,11 @@ void ArchiveHandler::updateOnlyChangedValues( const SArchiveStatus & _statusIn, 
     }
     if( ! _statusIn.archivingId.empty() ){
         _statusOut.archivingId = _statusIn.archivingId;
+
+        // NOTE: при первом запуске "archivingId" будет пустой, что значит создать стартовый архив.
+        // При повторных же с существующим ID будет создаваться архив с таким же ID,
+        // пока архиватор не будет уничтожен через "destroyArchiving" клиентским кодом
+        m_impl->m_initialParams.archivingId = _statusIn.archivingId;
     }
     if( ! _statusIn.archivingName.empty() ){
         _statusOut.archivingName = _statusIn.archivingName;

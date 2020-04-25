@@ -23,7 +23,7 @@ public:
     virtual void updateSystemState( const SSystemState & _state ) = 0;
     virtual void updateArchivingStatus( const std::vector<SArchiveStatus> & _status ) = 0;
     virtual void updateAnalyzeStatus( const std::vector<SAnalyzeStatus> & _status ) = 0;
-    virtual void newEvent( std::vector<SAnalyticEvent> & _event ) = 0;
+    virtual void newEvent( std::vector<SAnalyticEvent> && _event ) = 0;
 };
 
 // containers

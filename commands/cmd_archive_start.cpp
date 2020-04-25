@@ -23,21 +23,22 @@ CommandArchiveStart::CommandArchiveStart( SCommandServices * _commandServices )
 }
 
 bool CommandArchiveStart::serializeRequestTemplateMethodPart(){
+
     if( 0 == m_params.sensorId ){
         m_lastError = "sensor id is ZERO";
         return false;
     }
-
-    if( m_params.archivingName.empty() ){
-        m_lastError = "archiving name is EMPTY";
-        return false;
-    }
+    // TODO: do
+//    if( m_params.archivingName.empty() ){
+//        m_lastError = "archiving name is EMPTY";
+//        return false;
+//    }
 
     Json::Value root;
     root[ "cmd_type" ] = "storage";
     root[ "cmd_name" ] = "start";
     root[ "sensor_id" ] = (unsigned long long)m_params.sensorId;
-    root[ "archiving_name" ] = m_params.archivingName;
+    root[ "archiving_name" ] = ( m_params.archivingName.empty() ? "name_not_defined" : m_params.archivingName );
     root[ "archiving_id" ] = m_params.archivingId;
 
     Json::FastWriter writer;
@@ -47,6 +48,8 @@ bool CommandArchiveStart::serializeRequestTemplateMethodPart(){
 }
 
 bool CommandArchiveStart::parseResponseTemplateMethodPart(){
+
+    // parse
     Json::Value parsedRecord;
     if( ! m_jsonReader.parse( m_incomingMsg.c_str(), parsedRecord, false ) ){
         VS_LOG_ERROR << "parse failed due to [" << m_jsonReader.getFormattedErrorMessages() << "]"
@@ -55,18 +58,13 @@ bool CommandArchiveStart::parseResponseTemplateMethodPart(){
         return false;
     }
 
+    // set
     Json::Value body = parsedRecord["body"];
-
-//    SArchiveStatus status;
-//    status.sensorId = body["sensor_id"].asInt64();
-//    status.archivingName = body["archiving_name"].asString();
-//    status.archivingId = body["archiving_id"].asString();
-//    status.archiveState = common_utils::convertArchivingStateStr( body["archiving_state"].asString() );
-//    m_commandServices->handler->addArchivingStatus( status );
-
     if( common_vars::incoming_commands::COMMAND_RESULT_SUCCESS == parsedRecord["response"].asString() ){
-        m_archivingId = body["archiving_id"].asString();
-        m_archiveState = common_utils::convertArchivingStateStr( body["archiving_state"].asString() );
+        SArchiveStatus state;
+        state.archivingId = body["archiving_id"].asString();
+        state.archiveState = common_utils::convertArchivingStateStr( body["archiving_state"].asString() );
+        m_commandInitiator->addStatus( state, false );
         return true;
     }
     else{

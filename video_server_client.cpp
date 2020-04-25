@@ -1,5 +1,6 @@
 
 #include <objrepr/reprServer.h>
+#include <objrepr/config_reader.h>
 
 #include "from_ms_common/communication/amqp_client_c.h"
 #include "from_ms_common/communication/amqp_controller.h"
@@ -88,7 +89,7 @@ public:
                 if( ! rootClassinfoObjects.empty() ){
                     if( rootClassinfoObjects.size() > 1 ){
                         VS_LOG_ERROR << PRINT_HEADER
-                             << "MORE THAN ONE objrepr gdm-video-objects-container instances is detected"
+                             << " MORE THAN ONE objrepr gdm-video-objects-container instances is detected"
                              << endl;
                         return out;
                     }
@@ -111,21 +112,21 @@ public:
 
         // VS-container classinfo
         if( ! videoServerContainerClassinfoFound ){
-            VS_LOG_ERROR << PRINT_HEADER << "objrepr gdm-video-objects-container classinfo not found: " << settings.gdmRootObjectName
+            VS_LOG_ERROR << PRINT_HEADER << " objrepr gdm-video-objects-container classinfo not found: " << settings.gdmRootObjectName
                  << endl;
             return out;
         }
 
         // VS-container instance
         if( videoServersContainerInstances.empty() ){
-            VS_LOG_ERROR << PRINT_HEADER << "objrepr gdm-video-objects-container instance not found, classinfo: " << settings.gdmRootObjectName
+            VS_LOG_ERROR << PRINT_HEADER << " objrepr gdm-video-objects-container instance not found, classinfo: " << settings.gdmRootObjectName
                  << endl;
             return out;
         }
 
         // VS-object classinfo
         if( ! videoServerAnalyzeInstanceClassinfo || ! videoServerArchiveInstanceClassinfo ){
-            VS_LOG_ERROR << PRINT_HEADER << "objrepr gdm-video-server classinfo not found: " << VIDEO_SERVER_INSTANCE_AN_CLASSINFO_NAME
+            VS_LOG_ERROR << PRINT_HEADER << " objrepr gdm-video-server classinfo not found: " << VIDEO_SERVER_INSTANCE_AN_CLASSINFO_NAME
                  << endl;
             return out;
         }
@@ -145,14 +146,14 @@ public:
 
                 objrepr::StringAttributePtr idAttr = boost::dynamic_pointer_cast<objrepr::StringAttribute>( videoServer->attrMap()->getAttr(VIDEO_SERVER_INSTANCE_ATTR_ID.c_str()) );
                 if( ! idAttr ){
-                    VS_LOG_ERROR << PRINT_HEADER << "objrepr gdm-video-server instance attr not found: " << VIDEO_SERVER_INSTANCE_ATTR_ID
+                    VS_LOG_ERROR << PRINT_HEADER << " objrepr gdm-video-server instance attr not found: " << VIDEO_SERVER_INSTANCE_ATTR_ID
                          << endl;
                     return out;
                 }
 
                 objrepr::StringAttributePtr addressAttr = boost::dynamic_pointer_cast<objrepr::StringAttribute>( videoServer->attrMap()->getAttr(VIDEO_SERVER_INSTANCE_ATTR_ADDRESS.c_str()) );
                 if( ! addressAttr ){
-                    VS_LOG_ERROR << PRINT_HEADER << "objrepr gdm-video-server instance attr not found: " << VIDEO_SERVER_INSTANCE_ATTR_ADDRESS
+                    VS_LOG_ERROR << PRINT_HEADER << " objrepr gdm-video-server instance attr not found: " << VIDEO_SERVER_INSTANCE_ATTR_ADDRESS
                          << endl;
                     return out;
                 }
@@ -255,7 +256,7 @@ public:
         clientSettings.port = _settings.amqpBrokerPort;
         clientSettings.login = _settings.amqpLogin;
         clientSettings.pass = _settings.amqpPass;
-        clientSettings.deliveredMessageExpirationSec = 60;
+        clientSettings.deliveredMessageExpirationSec = 30;
 
         if( ! client->init(clientSettings) ){
             lastError = client->getState().m_lastError;
@@ -363,7 +364,9 @@ void VideoServerClient::destroyInstance( VideoServerClient * & _instance ){
     }
 }
 
-bool VideoServerClient::init( const SInitSettings & _settings ){
+bool VideoServerClient::init( SInitSettings _settings ){
+
+    m_impl->settings = _settings;
 
     // check stage
     if( m_impl->inited ){
@@ -379,6 +382,18 @@ bool VideoServerClient::init( const SInitSettings & _settings ){
         return false;
     }
 
+    // network settings
+//    m_impl->amqpSettings.amqpBrokerHost = objrepr::ConfigReader::singleton().get().amqpServerHost;
+//    m_impl->amqpSettings.amqpBrokerPort = std::stoi( objrepr::ConfigReader::singleton().get().amqpServerPort );
+//    m_impl->amqpSettings.amqpBrokerVirtualHost = objrepr::ConfigReader::singleton().get().amqpHost;
+//    m_impl->amqpSettings.amqpLogin = objrepr::ConfigReader::singleton().get().amqpLogin;
+//    m_impl->amqpSettings.amqpPass = objrepr::ConfigReader::singleton().get().amqpPassword;
+    m_impl->amqpSettings.amqpBrokerHost = "lenin";
+    m_impl->amqpSettings.amqpBrokerPort = 5672;
+    m_impl->amqpSettings.amqpBrokerVirtualHost = "safecity";
+    m_impl->amqpSettings.amqpLogin = "scuser";
+    m_impl->amqpSettings.amqpPass = "scpass";
+
     // context monitoring
     if( objrepr::RepresentationServer::instance()->currentContext() ){
         m_impl->slotContextLoaded();
@@ -386,13 +401,6 @@ bool VideoServerClient::init( const SInitSettings & _settings ){
 
     objrepr::RepresentationServer::instance()->contextLoadingFinished.connect( boost::bind( & PrivateImplementationVSC::slotContextLoaded, m_impl) );
     objrepr::RepresentationServer::instance()->contextUnloaded.connect( boost::bind( & PrivateImplementationVSC::slotContextUnloaded, m_impl) );
-
-    // network settings
-    m_impl->amqpSettings.amqpBrokerHost = "lenin";
-    m_impl->amqpSettings.amqpBrokerPort = 5672;
-    m_impl->amqpSettings.amqpBrokerVirtualHost = "safecity";
-    m_impl->amqpSettings.amqpLogin = "scuser";
-    m_impl->amqpSettings.amqpPass = "scpass";
 
     // async process of commands
     m_impl->threadClientMaintenance = new std::thread( & PrivateImplementationVSC::threadMaintenance, m_impl );
@@ -408,7 +416,7 @@ bool VideoServerClient::init( const SInitSettings & _settings ){
 std::vector<PVideoServerHandler> VideoServerClient::getVideoServerHandlers(){
 
     if( ! m_impl->inited ){
-        VS_LOG_WARN << PRINT_HEADER << " not yet inited" << endl;
+//        VS_LOG_WARN << PRINT_HEADER << " not yet inited" << endl;
         return std::vector<PVideoServerHandler>();
     }
 
