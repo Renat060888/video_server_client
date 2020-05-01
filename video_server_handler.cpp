@@ -10,7 +10,7 @@
 #include "video_server_handler.h"
 
 static constexpr int64_t PING_INTERVAL_MILLISEC = 1000;
-static constexpr int64_t SERVER_TIMEOUT_MILLISEC = 30000;
+static constexpr int64_t SERVER_TIMEOUT_MILLISEC = 10000;
 
 namespace video_server_client{
 
@@ -28,43 +28,47 @@ public:
         , online(false)
         , lastPongMillisec(0)
         , lastPingAtMillisec(0)
+        , archiversUpdate(false)
+        , analyzersUpdate(false)
     {}
 
     virtual void pongCatched() override {
         lastPongMillisec = common_utils::getCurrentTimeMillisec();
     }
 
-    virtual void archiverIsReady( const TArchivingId & _archId, const TLaunchCorrelationId & _corrId ) override {
+    virtual void archiversInUpdate( bool _update ) override {
+        archiversUpdate = _update;
+    }
 
-        auto iter = archiversAtLaunchPhase.find( _corrId );
-        if( iter != archiversAtLaunchPhase.end() ){
-            PArchiveHandler archiverHandler = iter->second;
-            archiverHandler->setArchivingId( _archId );
+    virtual void analyzersInUpdate( bool _update ) override {
+        analyzersUpdate = _update;
+    }
 
-            archiversAtLaunchPhase.erase( iter );
-        }
-        else{
-            // TODO: do
+    virtual void archiverIsReady( const TArchivingId & _archId ) override {
+
+        for( auto & valuePair : archivingHandlersBySensorId ){
+            PArchiveHandler & archiveHandler = valuePair.second;
+
+            if( archiveHandler->getArchiveStatus().archivingId == _archId ){
+                archivingHandlersByArchivingId.insert( {_archId, archiveHandler} );
+            }
         }
     }
 
-    virtual void analyzerIsReady( const TProcessingId & _procId, const TLaunchCorrelationId & _corrId ) override {
+    virtual void analyzerIsReady( const TProcessingId & _procId ) override {
 
-        auto iter = analyzersAtLaunchPhase.find( _corrId );
-        if( iter != analyzersAtLaunchPhase.end() ){
-            PAnalyzeHandler analyzerHandler = iter->second;
-            analyzerHandler->setProcessingId( _procId );
+        for( auto & valuePair : analyzeHandlersBySensorId ){
+            PAnalyzeHandler & analyzeHandler = valuePair.second;
 
-            analyzersAtLaunchPhase.erase( iter );
-        }
-        else{
-            // TODO: do
+            if( analyzeHandler->getAnalyzeStatus().processingId == _procId ){
+                analyzeHandlersByProcessingId.insert( {_procId, analyzeHandler} );
+            }
         }
     }
 
     virtual void updateServerState( const SServerState & _state ) override {
         // TODO: assign by one variable
-        status->objreprId = _state.objreprId;
+//        status->objreprId = _state.objreprId;
         status->currentContextId = _state.currentContextId;
         status->role = _state.role;
     }
@@ -79,29 +83,59 @@ public:
 
     virtual void updateArchivingStatus( const std::vector<SArchiveStatus> & _status ) override {
 
+        vector<string> disappeared;
         for( const SArchiveStatus & state : _status ){
             archiveHandlersLock.lock();
             auto iter = archivingHandlersByArchivingId.find( state.archivingId );
             if( iter != archivingHandlersByArchivingId.end() ){
                 PArchiveHandler archiverHandler = iter->second;
-
                 archiverHandler->addStatus( state, false );
             }
+            else{
+                if( ! archiversUpdate ){
+                    disappeared.push_back( state.archivingId );
+                }
+                else{
+                    PArchiveHandler archiveHandler = std::make_shared<ArchiveHandler>( commandServices );
+                    archiveHandler->addStatus( state, false );
+                    archivingHandlersBySensorId.insert( {state.sensorId, archiveHandler} );
+                    archivingHandlersByArchivingId.insert( {state.archivingId, archiveHandler} );
+                }
+            }
             archiveHandlersLock.unlock();
+        }
+
+        if( ! disappeared.empty() ){
+//            VS_LOG_WARN << PRINT_HEADER << " ------------------- there is a disappeared archives -------------------" << endl;
         }
     }
 
     virtual void updateAnalyzeStatus( const std::vector<SAnalyzeStatus> & _status ) override {
 
+        vector<string> disappeared;
         for( const SAnalyzeStatus & state : _status ){
             analyzeHandlersLock.lock();
             auto iter = analyzeHandlersByProcessingId.find( state.processingId );
             if( iter != analyzeHandlersByProcessingId.end() ){
                 PAnalyzeHandler analyzeHandler = iter->second;
-
                 analyzeHandler->addStatus( state, false );
             }
+            else{
+                if( ! analyzersUpdate ){
+                    disappeared.push_back( state.processingId );
+                }
+                else{
+                    PAnalyzeHandler analyzeHandler = std::make_shared<AnalyzeHandler>( commandServices );
+                    analyzeHandler->addStatus( state, false );
+                    analyzeHandlersBySensorId.insert( {state.sensorId, analyzeHandler} );
+                    analyzeHandlersByProcessingId.insert( {state.processingId, analyzeHandler} );
+                }
+            }
             analyzeHandlersLock.unlock();
+        }
+
+        if( ! disappeared.empty() ){
+//            VS_LOG_WARN << PRINT_HEADER << " ------------------- there is a disappeared analyzers -------------------" << endl;
         }
     }
 
@@ -127,6 +161,16 @@ public:
         }
     }
 
+    virtual void addCommmand( PCommand _cmd ) override {
+
+        commandsInProgress.push_back( _cmd );
+    }
+
+    virtual void addFuture( std::future<void> && _future ) override {
+
+        futureForDeferredSignal.push_back( std::move(_future) );
+    }
+
     virtual void callbackNetworkRequest( PEnvironmentRequest _request ) override {
 
         VS_LOG_INFO << PRINT_HEADER
@@ -135,12 +179,74 @@ public:
                     << endl;
     }
 
+    void updateArchivingHandlers(){
+
+        archiveHandlersLock.lock();
+        archivingHandlersBySensorId.clear();
+        archivingHandlersByArchivingId.clear();
+        archiveHandlersLock.unlock();
+
+        CommandArchivingStatus::SInitialParams params;
+        params.archivingId = CommandArchivingStatus::ALL_ARCHIVINGS;
+
+        PCommandArchivingStatus cmd = std::make_shared<CommandArchivingStatus>( & commandServices );
+        cmd->m_params = params;
+        cmd->execAsync();
+        commandsInProgress.push_back( cmd );
+    }
+
+    void disableArchivingHandlers(){
+
+        archiveHandlersLock.lock();
+        for( auto & valuePair : archivingHandlersBySensorId ){
+            PArchiveHandler handler = valuePair.second;
+            SArchiveStatus as;
+            as.archiveState = EArchiveState::UNAVAILABLE; // TODO: make more elegant
+            handler->addStatus( as, false );
+            handler->sendSignalStateChanged( EArchiveState::UNAVAILABLE );
+        }
+        // TODO: delete archiver ?
+        archiveHandlersLock.unlock();
+    }
+
+    void updateAnalyzeHandlers(){
+
+        analyzeHandlersLock.lock();
+        analyzeHandlersBySensorId.clear();
+        analyzeHandlersByProcessingId.clear();
+        analyzeHandlersLock.unlock();
+
+        CommandAnalyzeStatus::SInitialParams params;
+        params.sensorId = CommandAnalyzeStatus::ALL_SENSORS;
+        params.processingId = CommandAnalyzeStatus::ALL_PROCESSING;
+
+        PCommandAnalyzeStatus cmd = std::make_shared<CommandAnalyzeStatus>( & commandServices );
+        cmd->m_params = params;
+        cmd->execAsync();
+        commandsInProgress.push_back( cmd );
+    }
+
+    void disableAnalyzeHandlers(){
+
+        analyzeHandlersLock.lock();
+        for( auto & valuePair : analyzeHandlersBySensorId ){
+            PAnalyzeHandler handler = valuePair.second;
+            SAnalyzeStatus as;
+            as.analyzeState = EAnalyzeState::UNAVAILABLE; // TODO: make more elegant
+            handler->addStatus( as, false );
+            handler->sendSignalStateChanged( EAnalyzeState::UNAVAILABLE );
+        }
+        // TODO: delete analyzer
+        analyzeHandlersLock.unlock();
+    }
+
     void runSystemClock(){
 
         networkProvider->runNetworkCallbacks();
-        commandsProcessing();
-        remoteServicesMonitoring();
         ping();
+        remoteServicesMonitoring();
+        commandsProcessing();
+        clearFutures();
     }
 
     inline void commandsProcessing(){
@@ -162,14 +268,20 @@ public:
         if( online ){
             if( (common_utils::getCurrentTimeMillisec() - lastPongMillisec) > SERVER_TIMEOUT_MILLISEC ){
                 VS_LOG_INFO << PRINT_HEADER << " VideoServer OFFLINE at " << common_utils::getCurrentDateTimeStr() << endl;
+                disableArchivingHandlers();
+                disableAnalyzeHandlers();
                 online = false;
+                status->connectionEstablished = false;
                 interface->sendSignalOnline( false );
             }
         }
         else{
             if( (common_utils::getCurrentTimeMillisec() - lastPongMillisec) < SERVER_TIMEOUT_MILLISEC ){
                 VS_LOG_INFO << PRINT_HEADER << " VideoServer ONLINE at " << common_utils::getCurrentDateTimeStr() << endl;
+                updateArchivingHandlers();
+                updateAnalyzeHandlers();
                 online = true;
+                status->connectionEstablished = true;
                 interface->sendSignalOnline( true );
             }
         }
@@ -180,9 +292,25 @@ public:
         if( (common_utils::getCurrentTimeMillisec() - lastPingAtMillisec) > PING_INTERVAL_MILLISEC ){
             if( commandPing->isReady() ){
                 commandPing->execAsync();
+                commandsInProgress.push_back( commandPing );
             }
 
             lastPingAtMillisec = common_utils::getCurrentTimeMillisec();
+        }
+    }
+
+    inline void clearFutures(){
+
+        for( auto iter = futureForDeferredSignal.begin(); iter != futureForDeferredSignal.end(); ){
+            std::future<void> & analyzeFuture = ( * iter );
+
+            const std::future_status futureStatus = analyzeFuture.wait_for( std::chrono::milliseconds(10) );
+            if( std::future_status::ready == futureStatus ){
+                iter = futureForDeferredSignal.erase( iter );
+            }
+            else{
+                ++iter;
+            }
         }
     }
 
@@ -226,6 +354,7 @@ public:
                 return ctx->name();
             }
         }
+        return string();
     }
 
     // data
@@ -241,8 +370,9 @@ public:
     std::unordered_map<TProcessingId, PAnalyzeHandler> analyzeHandlersByProcessingId;
     std::unordered_multimap<TSensorId, PArchiveHandler> archivingHandlersBySensorId;
     std::unordered_map<TArchivingId, PArchiveHandler> archivingHandlersByArchivingId;
-    std::map<TLaunchCorrelationId, PArchiveHandler> archiversAtLaunchPhase;
-    std::map<TLaunchCorrelationId, PAnalyzeHandler> analyzersAtLaunchPhase;
+    bool archiversUpdate;
+    bool analyzersUpdate;
+    std::vector<std::future<void>> futureForDeferredSignal;
 
     // service
     VideoServerHandler * interface;
@@ -311,7 +441,10 @@ const std::string & VideoServerHandler::getLastError(){
 }
 
 PConstVideoServerStatus VideoServerHandler::getStatus(){
-
+//    VS_LOG_INFO << PRINT_HEADER << " 'get status' called, conn: "
+//                << m_impl->status->connectionEstablished
+//                << " obj id: " << m_impl->status->objreprId
+//                << endl;
     return m_impl->status;
 }
 
@@ -350,14 +483,38 @@ PAnalyzeHandler VideoServerHandler::launchAnalyze( CommandAnalyzeStart::SInitial
         bool * _errOccured,
         std::string * _errMsg ){
 
+    // check
     if( ! m_impl->isServerAvailable(_errOccured, _errMsg) ){
         return nullptr;
     }
 
-    // TODO: do
+    // init
+    PAnalyzeHandler analyzeHandler = std::make_shared<AnalyzeHandler>( m_impl->commandServices );
+    if( ! analyzeHandler->init(_params) ){
+        stringstream ss;
+        ss << PRINT_HEADER << " analyzer init ERROR [" << analyzeHandler->getLastError() << "]";
+        m_impl->lastError = ss.str();
+        VS_LOG_ERROR << ss.str() << endl;
+        if( _errMsg ){
+            ( * _errMsg ) = ss.str();
+        }
+        if( _errOccured ){
+            ( * _errOccured ) = true;
+        }
+        return nullptr;
+    }
 
+    // start
+    analyzeHandler->start();
 
+    m_impl->analyzeHandlersLock.lock();
+    m_impl->analyzeHandlersBySensorId.insert( {_params.sensorId, analyzeHandler} );
+    m_impl->analyzeHandlersLock.unlock();
 
+    if( _errOccured ){
+        ( * _errOccured ) = false;
+    }
+    return analyzeHandler;
 }
 
 // retranslation
@@ -429,16 +586,11 @@ PArchiveHandler VideoServerHandler::launchArchiving( CommandArchiveStart::SIniti
         return nullptr;
     }
 
-    // launch correlation
-    const TLaunchCorrelationId corrId = common_utils::generateUniqueId();
-    m_impl->archiversAtLaunchPhase.insert( {corrId, archiveHandler} );
-
     // start
     archiveHandler->start();
 
     m_impl->archiveHandlersLock.lock();
-    m_impl->archivingHandlersBySensorId.insert( {_params.sensorId, archiveHandler} );
-    m_impl->archivingHandlersByArchivingId.insert( {archiveHandler->getArchiveStatus().archivingId, archiveHandler} );
+    m_impl->archivingHandlersBySensorId.insert( {_params.sensorId, archiveHandler} );    
     m_impl->archiveHandlersLock.unlock();
 
     if( _errOccured ){
@@ -452,8 +604,7 @@ void VideoServerHandler::sendSignalStatusUpdated(){
     emit signalStatusUpdated();
 }
 
-void VideoServerHandler::sendSignalOnline( bool _online ){
-
+void VideoServerHandler::sendSignalOnline( bool _online ){    
     emit signalOnline( _online );
 }
 

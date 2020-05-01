@@ -99,7 +99,9 @@ bool ArchiveHandler::start(){
     PCommandArchiveStart cmd = std::make_shared<CommandArchiveStart>( & m_impl->m_commandServices );
     cmd->m_params = m_impl->m_initialParams;
     cmd->m_commandInitiator = this;
-    const bool rt = cmd->exec();
+    const bool rt = cmd->execAsync();
+
+    m_impl->m_commandServices.callbacks->addCommmand( cmd );
 
     return rt;
 }
@@ -112,7 +114,11 @@ bool ArchiveHandler::stop( bool _destroy ){
 
     PCommandArchiveStop cmd = std::make_shared<CommandArchiveStop>( & m_impl->m_commandServices );
     cmd->m_params = params;
-    return cmd->exec();
+    const bool rt = cmd->execAsync();
+
+    m_impl->m_commandServices.callbacks->addCommmand( cmd );
+
+    return rt;
 }
 
 void ArchiveHandler::sendSignalStateChanged( const EArchiveState _state ){
@@ -139,11 +145,6 @@ void ArchiveHandler::sendSignalStateChanged( const EArchiveState _state ){
     emit signalStateChanged(_state);
 }
 
-void ArchiveHandler::setArchivingId( const TArchivingId & _id ){
-
-    m_impl->m_status.archivingId = _id;
-}
-
 void ArchiveHandler::addStatus( const SArchiveStatus & _status, bool _afterDestroy ){
 
     updateOnlyChangedValues( _status, m_impl->m_status );
@@ -160,7 +161,7 @@ void ArchiveHandler::addStatus( const SArchiveStatus & _status, bool _afterDestr
 
         // create future for deferred signal
         std::future<void> deferredSignalFuture = std::async( std::launch::async, lambda, _status );
-//        m_impl->m_commandServices.handler->addDeferredSignalFuture( std::move(deferredSignalFuture) );
+        m_impl->m_commandServices.callbacks->addFuture( std::move(deferredSignalFuture) );
     }
 }
 
@@ -168,9 +169,11 @@ void ArchiveHandler::updateOnlyChangedValues( const SArchiveStatus & _statusIn, 
 
     if( _statusIn.sensorId != 0 ){
         _statusOut.sensorId = _statusIn.sensorId;
+        m_impl->m_initialParams.sensorId = _statusIn.sensorId;
     }
     if( _statusIn.archiveState != EArchiveState::UNDEFINED ){
         _statusOut.archiveState = _statusIn.archiveState;
+        m_impl->m_initialParams.archiveState = _statusIn.archiveState;
     }
     if( ! _statusIn.archivingId.empty() ){
         _statusOut.archivingId = _statusIn.archivingId;
@@ -182,6 +185,7 @@ void ArchiveHandler::updateOnlyChangedValues( const SArchiveStatus & _statusIn, 
     }
     if( ! _statusIn.archivingName.empty() ){
         _statusOut.archivingName = _statusIn.archivingName;
+        m_impl->m_initialParams.archivingName = _statusIn.archivingName;
     }
 }
 

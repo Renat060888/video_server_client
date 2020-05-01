@@ -16,6 +16,7 @@ class AnalyzeHandler : public QObject
 {
 Q_OBJECT
     friend class PrivateImplementationVSH;
+    friend class CommandAnalyzeStart;
 public:
     AnalyzeHandler( common_types::SCommandServices & _commandServices );
     ~AnalyzeHandler();
@@ -44,7 +45,6 @@ private:
 
     // access allowed only for friend entities
 private:
-    void setProcessingId( const TProcessingId & _id );
     void addStatus( const SAnalyzeStatus & _status, bool _afterDestroy );
     void updateOnlyChangedValues( const SAnalyzeStatus & _statusIn, SAnalyzeStatus & _statusOut );
     void addEvent( PAnalyticEvent & event );

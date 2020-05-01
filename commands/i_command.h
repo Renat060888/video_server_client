@@ -48,7 +48,6 @@ private:
     // service
     PEnvironmentRequest m_networkRequest;
 };
-using PCommand = std::shared_ptr<ICommand>;
 
 }
 

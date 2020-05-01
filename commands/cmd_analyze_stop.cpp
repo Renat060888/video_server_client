@@ -50,7 +50,7 @@ bool CommandAnalyzeStop::parseResponseTemplateMethodPart(){
 
         SAnalyzeStatus status;
         status.sensorId = body["sensor_id"].asInt64();
-        status.analyzeState = common_utils::convertAnalyzeStateStr( body["analyze_state"].asString() );
+        status.analyzeState = common_utils::convertAnalyzeStateStr( body["analyze_status"].asString() );
         status.processingId = body["processing_id"].asString();
         status.processingName = body["processing_name"].asString();
 

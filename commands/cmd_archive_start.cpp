@@ -7,8 +7,8 @@
 #include "from_ms_common/system/logger.h"
 #include "from_ms_common/common/ms_common_utils.h"
 #include "common_utils.h"
-#include "video_server_handler.h"
 #include "common_vars.h"
+#include "video_server_handler.h"
 #include "cmd_archive_start.h"
 
 namespace video_server_client{
@@ -64,7 +64,14 @@ bool CommandArchiveStart::parseResponseTemplateMethodPart(){
         SArchiveStatus state;
         state.archivingId = body["archiving_id"].asString();
         state.archiveState = common_utils::convertArchivingStateStr( body["archiving_state"].asString() );
+        state.sensorId = body["sensor_id"].asInt64();
+
+        // prepare acrhiver
+//        m_commandInitiator->setArchivingId( state.archivingId );
         m_commandInitiator->addStatus( state, false );
+
+        // notify server-handler about him ( will be finded by ArchId )
+        m_commandServices->callbacks->archiverIsReady( state.archivingId );
         return true;
     }
     else{

@@ -39,7 +39,6 @@ private:
 
     // access allowed only for friend entities
 private:
-    void setArchivingId( const TArchivingId & _id );
     void addStatus( const SArchiveStatus & _status, bool _afterDestroy );
     void updateOnlyChangedValues( const SArchiveStatus & _statusIn, SArchiveStatus & _statusOut );
 };

@@ -47,10 +47,7 @@ public:
 
     // request
     SInitialParams m_params;
-
-    // NOTE: response from server
-    std::string m_processingId;
-    EAnalyzeState m_analyzeState;
+    class AnalyzeHandler * m_commandInitiator;
 
 
 private:

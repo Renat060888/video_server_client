@@ -94,6 +94,8 @@ bool CommandAnalyzeStart::serializeRequestTemplateMethodPart(){
 }
 
 bool CommandAnalyzeStart::parseResponseTemplateMethodPart(){
+
+    // parse
     Json::Value parsedRecord;
     if( ! m_jsonReader.parse( m_incomingMsg.c_str(), parsedRecord, false ) ){
         VS_LOG_ERROR << "parse failed due to [" << m_jsonReader.getFormattedErrorMessages() << "]"
@@ -102,17 +104,20 @@ bool CommandAnalyzeStart::parseResponseTemplateMethodPart(){
         return false;
     }
 
+    // set
     Json::Value body = parsedRecord["body"];
     if( common_vars::incoming_commands::COMMAND_RESULT_SUCCESS == parsedRecord["response"].asString() ){
-//        SAnalyzeStatus status;
-//        status.sensorId = body["sensor_id"].asInt64();
-//        status.analyzeState = common_utils::convertAnalyzeStateStr( body["analyze_state"].asString() );
-//        status.processingId = body["processing_id"].asString();
-//        status.processingName = body["processing_name"].asString();
-//        m_commandServices->handler->addAnalyzeStatus( status );
+        SAnalyzeStatus state;
+        state.processingId = body["processing_id"].asString();
+        state.profileId = body["profile_id"].asInt64();
+        state.sensorId = body["sensor_id"].asInt64();
+        state.analyzeState = common_utils::convertAnalyzeStateStr( body["analyze_status"].asString() );
 
-        m_processingId = body["processing_id"].asString();
-        m_analyzeState = common_utils::convertAnalyzeStateStr( body["analyze_state"].asString() );
+        // prepare acrhiver
+        m_commandInitiator->addStatus( state, false );
+
+        // notify server-handler about him ( will be finded by ArchId )
+        m_commandServices->callbacks->analyzerIsReady( state.processingId );
         return true;
     }
     else{

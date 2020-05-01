@@ -256,7 +256,7 @@ public:
         clientSettings.port = _settings.amqpBrokerPort;
         clientSettings.login = _settings.amqpLogin;
         clientSettings.pass = _settings.amqpPass;
-        clientSettings.deliveredMessageExpirationSec = 30;
+        clientSettings.deliveredMessageExpirationSec = 10;
 
         if( ! client->init(clientSettings) ){
             lastError = client->getState().m_lastError;

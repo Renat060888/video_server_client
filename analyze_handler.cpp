@@ -102,15 +102,21 @@ bool AnalyzeHandler::start(){
 
         PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_impl->m_commandServices );
         cmd->m_params = params;
-        return cmd->exec();
+        cmd->m_commandInitiator = this;
+        const bool rt = cmd->execAsync();
+
+        m_impl->m_commandServices.callbacks->addCommmand( cmd );
+
+        return rt;
     }
     else{
         PCommandAnalyzeStart cmd = std::make_shared<CommandAnalyzeStart>( & m_impl->m_commandServices );
         cmd->m_params = m_impl->m_initialParams;
-        const bool rt = cmd->exec();
+        cmd->m_commandInitiator = this;
+        const bool rt = cmd->execAsync();
 
-        m_impl->m_status.processingId = cmd->m_processingId;
-        m_impl->m_status.analyzeState = cmd->m_analyzeState;
+        m_impl->m_commandServices.callbacks->addCommmand( cmd );
+
         return rt;
     }
 }
@@ -124,7 +130,11 @@ bool AnalyzeHandler::stop( bool _destroy ){
 
     PCommandAnalyzeStop cmd = std::make_shared<CommandAnalyzeStop>( & m_impl->m_commandServices );
     cmd->m_params = params;
-    return cmd->exec();
+    const bool rt = cmd->execAsync();
+
+    m_impl->m_commandServices.callbacks->addCommmand( cmd );
+
+    return rt;
 }
 
 const SAnalyzeStatus & AnalyzeHandler::getAnalyzeStatus(){
@@ -155,11 +165,6 @@ std::vector<PConstAnalyticEvent> AnalyzeHandler::getEvents(){
     return out;
 }
 
-void AnalyzeHandler::setProcessingId( const TProcessingId & _id ){
-
-//    m_impl->m_status.archivingId = _id;
-}
-
 void AnalyzeHandler::addStatus( const SAnalyzeStatus & _status, bool _afterDestroy ){
 
     updateOnlyChangedValues( _status, m_impl->m_status );
@@ -176,7 +181,7 @@ void AnalyzeHandler::addStatus( const SAnalyzeStatus & _status, bool _afterDestr
 
         // create future for deferred signal
         std::future<void> deferredSignalFuture = std::async( std::launch::async, lambda, _status );
-//        m_impl->m_commandServices.handler->addDeferredSignalFuture( std::move(deferredSignalFuture) );
+        m_impl->m_commandServices.callbacks->addFuture( std::move(deferredSignalFuture) );
     }
 }
 
@@ -184,18 +189,23 @@ void AnalyzeHandler::updateOnlyChangedValues( const SAnalyzeStatus & _statusIn, 
 
     if( _statusIn.sensorId != 0 ){
         _statusOut.sensorId = _statusIn.sensorId;
+        m_impl->m_initialParams.sensorId = _statusIn.sensorId;
     }
     if( _statusIn.profileId != 0 ){
         _statusOut.profileId = _statusIn.profileId;
+        m_impl->m_initialParams.profileId = _statusIn.profileId;
     }
     if( _statusIn.analyzeState != EAnalyzeState::UNDEFINED ){
         _statusOut.analyzeState = _statusIn.analyzeState;
+        m_impl->m_initialParams.analyzeState = _statusIn.analyzeState;
     }
     if( ! _statusIn.processingId.empty() ){
         _statusOut.processingId = _statusIn.processingId;
+        m_impl->m_initialParams.processingId = _statusIn.processingId;
     }
     if( ! _statusIn.processingName.empty() ){
         _statusOut.processingName = _statusIn.processingName;
+        m_impl->m_initialParams.processingName = _statusIn.processingName;
     }
 }
 

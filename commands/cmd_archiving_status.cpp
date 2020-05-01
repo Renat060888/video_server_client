@@ -45,6 +45,8 @@ bool CommandArchivingStatus::parseResponseTemplateMethodPart(){
         return false;
     }
 
+    m_commandServices->callbacks->archiversInUpdate( true );
+
     Json::Value body = parsedRecord["body"];
     Json::Value statusesRecords = body["archivers_status"];
     for( Json::ArrayIndex i = 0; i < statusesRecords.size(); i++ ){
@@ -58,6 +60,9 @@ bool CommandArchivingStatus::parseResponseTemplateMethodPart(){
         std::vector<SArchiveStatus> status = { m_status };
         m_commandServices->callbacks->updateArchivingStatus( status );
     }
+
+    m_commandServices->callbacks->archiversInUpdate( false );
+    return true;
 }
 
 }

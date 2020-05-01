@@ -130,7 +130,7 @@ public:
     virtual bool checkResponseReadyness() override {
 
         if( (common_utils::getCurrentTimeMillisec() - AEnvironmentRequest::m_requestTimeMillisec) > networkClient->m_state.settings.deliveredMessageExpirationSec * 1000 ){
-            VS_LOG_WARN << PRINT_HEADER << " request timeouted, corr id [" << AEnvironmentRequest::m_correlationId << "]" << endl;
+//            VS_LOG_WARN << PRINT_HEADER << " request timeouted, corr id [" << AEnvironmentRequest::m_correlationId << "]" << endl;
             AEnvironmentRequest::m_timeouted = true;
             networkClient->m_refusedMessages.insert( AEnvironmentRequest::m_correlationId );
             AEnvironmentRequest::m_correlationId.clear();

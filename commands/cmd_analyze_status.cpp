@@ -53,27 +53,25 @@ bool CommandAnalyzeStatus::parseResponseTemplateMethodPart(){
         return false;
     }
 
+    m_commandServices->callbacks->analyzersInUpdate( true );
+
     Json::Value body = parsedRecord["body"];
-    if( common_vars::incoming_commands::COMMAND_RESULT_SUCCESS == parsedRecord["response"].asString() ){
-        Json::Value statusesRecords = body["analyzers_status"];
-        for( Json::ArrayIndex i = 0; i < statusesRecords.size(); i++ ){
-            Json::Value record = statusesRecords[ i ];
+    Json::Value statusesRecords = body["analyzers_status"];
+    for( Json::ArrayIndex i = 0; i < statusesRecords.size(); i++ ){
+        Json::Value record = statusesRecords[ i ];
 
-            m_status.sensorId = record["sensor_id"].asUInt64();
-            m_status.analyzeState = common_utils::convertAnalyzeStateStr( record["state"].asString() );
-            m_status.processingId = record["processing_id"].asString();
-            m_status.processingName = record["processing_name"].asString();
-            m_status.profileId = record["profile_id"].asUInt64();
+        m_status.sensorId = record["sensor_id"].asUInt64();
+        m_status.analyzeState = common_utils::convertAnalyzeStateStr( record["state"].asString() );
+        m_status.processingId = record["processing_id"].asString();
+        m_status.processingName = record["processing_name"].asString();
+        m_status.profileId = record["profile_id"].asUInt64();
 
-            std::vector<SAnalyzeStatus> status = { m_status };
-            m_commandServices->callbacks->updateAnalyzeStatus( status );
-        }
-        return true;
+        std::vector<SAnalyzeStatus> status = { m_status };
+        m_commandServices->callbacks->updateAnalyzeStatus( status );
     }
-    else{
-        m_lastError = body.asString();
-        return false;
-    }
+
+    m_commandServices->callbacks->analyzersInUpdate( false );
+    return true;
 }
 
 }
